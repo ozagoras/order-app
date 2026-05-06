@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NFC Tag Setup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+    .subtitle { font-size: 13px; color: #888; margin-top: 4px; margin-bottom: 24px; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 15px;
+      color: #1a1a1a;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 16px;
+    }
+    input[type="text"]:focus { border-color: #f59e0b; }
+
+    .mode-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #f0f0f0;
+      color: #666;
+      transition: all 0.2s;
+    }
+    .mode-btn.active { background: #f59e0b; color: #fff; }
+
+    .scan-btn {
+      width: 100%;
+      padding: 16px;
+      background: #f59e0b;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .scan-btn:hover { background: #d97706; }
+    .scan-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .manual-box {
+      display: none;
+      margin-bottom: 16px;
+    }
+    .manual-box.visible { display: block; }
+
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: #1e40af;
+      line-height: 1.6;
+    }
+    .info-box strong { display: block; margin-bottom: 4px; }
+
+    .status {
+      margin-top: 20px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+    }
+    .status.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; display: block; }
+    .status.error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; display: block; }
+    .status.info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; display: block; }
+
+    .sdm-instructions {
+      display: none;
+      margin-top: 20px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .sdm-instructions.visible { display: block; }
+    .sdm-instructions h3 { font-size: 13px; font-weight: 700; color: #92400e; margin-bottom: 8px; }
+    .sdm-instructions ol { padding-left: 16px; font-size: 12px; color: #78350f; line-height: 1.8; }
+    .url-box {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: monospace;
+      font-size: 11px;
+      word-break: break-all;
+      color: #333;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>📡 NFC Tag Setup</h1>
+  <p class="subtitle">Admin only — register chips to tables</p>
+
+  <label>Table ID</label>
+  <input type="text" id="tableId" placeholder="e.g. Table-1 or Beach-A3" />
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('android')">Android (NFC)</button>
+    <button class="mode-btn" onclick="setMode('manual')">Manual (iPhone)</button>
+  </div>
+
+  <!-- Android mode -->
+  <div id="androidMode">
+    <button class="scan-btn" id="scanBtn" onclick="startScan()">📡 Scan NFC Tag</button>
+  </div>
+
+  <!-- Manual mode (iPhone) -->
+  <div class="manual-box" id="manualMode">
+    <div class="info-box">
+      <strong>How to find UID on iPhone:</strong>
+      1. Install NXP TagWriter from App Store<br>
+      2. Open app → tap "Read Tags"<br>
+      3. Hold phone over NFC tag<br>
+      4. Copy the UID shown (e.g. 04A1B2C3D4E5F6)
+    </div>
+    <label>Tag UID</label>
+    <input type="text" id="manualUid" placeholder="e.g. 04A1B2C3D4E5F6" style="font-family:monospace;" />
+    <button class="scan-btn" onclick="registerManual()">Register Tag</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <!-- Shown after successful registration -->
+  <div class="sdm-instructions" id="sdmInstructions">
+    <h3>✅ Tag registered — now configure SDM in NXP TagWriter:</h3>
+    <ol>
+      <li>Open NXP TagWriter on Android</li>
+      <li>Tap "Write tags" → "New dataset" → "Link"</li>
+      <li>Enter this URL exactly:</li>
+    </ol>
+    <div class="url-box" id="sdmUrl"></div>
+    <ol start="4">
+      <li>Enable <strong>SDM</strong></li>
+      <li>Enable UID mirror, Counter mirror, CMAC mirror</li>
+      <li>Set <strong>FileReadKey</strong> to your SDM_AES_KEY from .env</li>
+      <li>Tap tag to write</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+  let mode = 'android'
+
+  function setMode(m) {
+    mode = m
+    document.querySelectorAll('.mode-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && m === 'android') || (i === 1 && m === 'manual'))
+    })
+    document.getElementById('androidMode').style.display = m === 'android' ? 'block' : 'none'
+    document.getElementById('manualMode').classList.toggle('visible', m === 'manual')
+  }
+
+  function showStatus(type, msg) {
+    const el = document.getElementById('status')
+    el.className = 'status ' + type
+    el.textContent = msg
+  }
+
+  async function registerUid(uid) {
+    const tableId = document.getElementById('tableId').value.trim()
+    if (!tableId) { showStatus('error', 'Please enter a Table ID first'); return }
+    if (!uid)     { showStatus('error', 'No UID detected');               return }
+
+    showStatus('info', 'Saving to database...')
+
+    try {
+      const res  = await fetch('/api/register-tag', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ uid, tableId })
+      })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        showStatus('success', `✅ Registered! UID: ${uid} → ${tableId}`)
+        const base = window.location.origin
+        document.getElementById('sdmUrl').textContent =
+          `${base}/order?uid={uid}&ctr={counter}&cmac={cmac}`
+        document.getElementById('sdmInstructions').classList.add('visible')
+        document.getElementById('tableId').value = ''
+      } else {
+        showStatus('error', data.error || 'Registration failed')
+      }
+    } catch (e) {
+      showStatus('error', 'Network error: ' + e.message)
+    }
+  }
+
+  async function startScan() {
+    if (!('NDEFReader' in window)) {
+      showStatus('error', 'Web NFC not supported. Use Chrome on Android, or switch to Manual mode.')
+      return
+    }
+    const tableId = document.getElementById('tableId').value.trim()
+    if (!tableId) { showStatus('error', 'Please enter a Table ID first'); return }
+
+    const btn = document.getElementById('scanBtn')
+    btn.disabled = true
+    btn.textContent = '📡 Scanning… hold tag to phone'
+    showStatus('info', 'Hold your NFC tag against the back of your phone...')
+
+    try {
+      const ndef = new NDEFReader()
+      await ndef.scan()
+      ndef.onreading = async (event) => {
+        btn.disabled = false
+        btn.textContent = '📡 Scan NFC Tag'
+        const uid = event.serialNumber.replace(/:/g, '').toUpperCase()
+        await registerUid(uid)
+      }
+    } catch (e) {
+      btn.disabled = false
+      btn.textContent = '📡 Scan NFC Tag'
+      showStatus('error', 'NFC scan failed: ' + e.message)
+    }
+  }
+
+  async function registerManual() {
+    const uid = document.getElementById('manualUid').value.trim().toUpperCase()
+    if (!uid) { showStatus('error', 'Please enter the UID'); return }
+    await registerUid(uid)
+  }
+</script>
+</body>
+</html>

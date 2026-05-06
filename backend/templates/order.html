@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Order</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fafafa;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .header {
+      background: #f59e0b;
+      color: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header p  { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+
+    /* Loading / error states */
+    .state-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 32px 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .state-box .icon  { font-size: 48px; margin-bottom: 12px; }
+    .state-box h2     { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+    .state-box p      { font-size: 14px; color: #666; margin-top: 8px; line-height: 1.5; }
+    .state-box.error h2 { color: #dc2626; }
+
+    /* Order content (shown after session validated) */
+    #orderContent { display: none; }
+
+    .table-badge {
+      background: #fff;
+      border: 2px solid #f59e0b;
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .table-badge .icon { font-size: 32px; }
+    .table-badge h2   { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+    .table-badge p    { font-size: 13px; color: #888; }
+
+    .session-info {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #166534;
+      margin-bottom: 20px;
+      font-family: monospace;
+    }
+
+    /* This is where you'll plug in your real menu/order UI */
+    .placeholder {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      color: #888;
+    }
+    .placeholder .icon { font-size: 48px; margin-bottom: 12px; }
+    .placeholder h3 { font-size: 16px; font-weight: 600; color: #444; margin-bottom: 8px; }
+    .placeholder p  { font-size: 13px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🍹 Beach Bar</h1>
+    <p>Tap to order from your table</p>
+  </div>
+
+  <!-- Loading state -->
+  <div class="state-box" id="loadingState">
+    <div class="icon">⏳</div>
+    <h2>Verifying your tap...</h2>
+    <p>Just a moment</p>
+  </div>
+
+  <!-- Error state -->
+  <div class="state-box error" id="errorState" style="display:none;">
+    <div class="icon">❌</div>
+    <h2 id="errorTitle">Invalid session</h2>
+    <p id="errorMsg">This link has expired or already been used. Please tap the NFC tag again.</p>
+  </div>
+
+  <!-- Order content — shown after session is validated and consumed -->
+  <div id="orderContent">
+    <div class="table-badge">
+      <div class="icon">🏖️</div>
+      <div>
+        <h2 id="tableLabel">Table —</h2>
+        <p>Session verified ✓</p>
+      </div>
+    </div>
+
+    <div class="session-info" id="sessionInfo"></div>
+
+    <!-- --------------------------------------------------------
+         YOUR ORDER UI GOES HERE
+         Replace this placeholder with your actual menu,
+         item selection, cart, and order submission logic.
+    --------------------------------------------------------- -->
+    <div class="placeholder">
+      <div class="icon">🍔</div>
+      <h3>Menu coming soon</h3>
+      <p>
+        Session is valid and table is identified.<br>
+        Replace this section with your order UI.
+      </p>
+    </div>
+
+  </div>
+
+<script>
+  // Read uid, ctr, cmac from the URL query string
+  // These are injected by the NFC chip on every tap
+  const params = new URLSearchParams(window.location.search)
+  const uid  = params.get('uid')
+  const ctr  = params.get('ctr')
+  const cmac = params.get('cmac')
+
+  function showError(title, msg) {
+    document.getElementById('loadingState').style.display = 'none'
+    document.getElementById('errorState').style.display   = 'block'
+    document.getElementById('errorTitle').textContent     = title
+    document.getElementById('errorMsg').textContent       = msg
+  }
+
+  async function init() {
+    // Basic check — all three params must be present
+    if (!uid || !ctr || !cmac) {
+      showError('Missing parameters', 'This page must be opened by tapping an NFC tag, not by typing the URL manually.')
+      return
+    }
+
+    try {
+      // Step 1 — Validate the tap with Flask
+      const sessionRes = await fetch(`/api/session?uid=${uid}&ctr=${ctr}&cmac=${cmac}`)
+      const sessionData = await sessionRes.json()
+
+      if (!sessionRes.ok) {
+        showError('Tap rejected', sessionData.error || 'Session validation failed. Please tap the tag again.')
+        return
+      }
+
+      const { sessionId, tableId } = sessionData
+
+      // Step 2 — Consume the session immediately
+      // This prevents copy/paste reuse — session is now single-use
+      const consumeRes = await fetch('/api/consume', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ sessionId })
+      })
+      const consumeData = await consumeRes.json()
+
+      if (!consumeRes.ok) {
+        showError('Session already used', consumeData.error || 'This link has already been used. Tap the tag again.')
+        return
+      }
+
+      // Step 3 — Show the order page
+      document.getElementById('loadingState').style.display  = 'none'
+      document.getElementById('orderContent').style.display  = 'block'
+      document.getElementById('tableLabel').textContent      = tableId
+      document.getElementById('sessionInfo').textContent     = `Session: ${sessionId}`
+
+    } catch (e) {
+      showError('Network error', 'Could not reach the server. Check your connection and tap again.')
+    }
+  }
+
+  init()
+</script>
+</body>
+</html>
