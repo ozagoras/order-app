@@ -1,17 +1,17 @@
 """
 app.py
 Flask backend + simple HTML frontend for the NFC Beach Bar ordering system.
-No Next.js — Flask serves all pages directly.
+Served by Gunicorn in production.
 
 Pages (HTML):
-    GET  /nfc-writer            — admin page to register NFC tags to tables
-    GET  /order                 — customer order page (opened by NFC tap)
+    GET  /nfc-writer        — admin page to register NFC tags to tables
+    GET  /order             — customer order page (opened by NFC tap)
 
 API endpoints (JSON):
-    GET  /api/session           — validate NFC scan, create session
-    POST /api/consume           — mark session used when order page loads
-    POST /api/register-tag      — register UID → table mapping
-    GET  /api/health            — health check
+    GET  /api/session       — validate NFC scan, create session
+    POST /api/consume       — mark session used when order page loads
+    POST /api/register-tag  — register UID → table mapping
+    GET  /api/health        — health check
 """
 
 import os
@@ -40,33 +40,32 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CORS(app)
+# CORS — restrict to your own domain in production
+# BASE_URL is set in Render environment variables e.g. https://beach-bar.onrender.com
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
+CORS(app, origins=[BASE_URL])
 
 
 # ===========================================================================
 # HTML PAGES
 # ===========================================================================
 
-# ---------------------------------------------------------------------------
-# GET /nfc-writer
-# Admin page — register NFC chip UIDs to table IDs.
-# Open this on Android Chrome during one-time tag setup.
-# ---------------------------------------------------------------------------
-
 @app.route("/nfc-writer")
 def nfc_writer_page():
+    """
+    Admin page — register NFC chip UIDs to table IDs.
+    Open this on Android Chrome during one-time tag setup.
+    """
     return render_template("nfc_writer.html")
 
 
-# ---------------------------------------------------------------------------
-# GET /order
-# Customer-facing order page.
-# Opened automatically when a customer taps an NFC tag.
-# Expects: ?uid=XX&ctr=XX&cmac=XX  (injected by the chip)
-# ---------------------------------------------------------------------------
-
 @app.route("/order")
 def order_page():
+    """
+    Customer-facing order page.
+    Opened automatically when a customer taps an NFC tag.
+    Expects: ?uid=XX&ctr=XX&cmac=XX (injected by the chip)
+    """
     return render_template("order.html")
 
 
@@ -74,40 +73,44 @@ def order_page():
 # API ENDPOINTS
 # ===========================================================================
 
-# ---------------------------------------------------------------------------
-# GET /api/session
-#
-# Called by the order page JS as soon as it loads.
-# Validates the NFC tap by checking CMAC, counter, and tag registration.
-#
-# Query params: uid, ctr, cmac
-# Returns:      { sessionId, tableId }
-# ---------------------------------------------------------------------------
-
 @app.route("/api/session", methods=["GET"])
 def session():
+    """
+    Validate an NFC tap and create a single-use session.
+
+    Called by order.html JS immediately on page load.
+    Query params: uid, ctr, cmac
+    Returns:      { sessionId, tableId }
+
+    Validation chain:
+      1. uid, ctr, cmac must be present
+      2. CMAC verified cryptographically  — proves tap is genuine
+      3. UID looked up in nfc_tags        — confirms tag is registered
+      4. counter > last_counter           — replay protection
+      5. New session created              — 5 min expiry, used=false
+      6. last_counter updated             — old URL permanently dead
+    """
     uid  = request.args.get("uid",  "").strip().upper()
     ctr  = request.args.get("ctr",  "").strip().upper()
     cmac = request.args.get("cmac", "").strip().upper()
 
     # 1 — All three parameters must be present
     if not uid or not ctr or not cmac:
-        logger.warning("Session request missing params uid=%s ctr=%s cmac=%s", uid, ctr, cmac)
+        logger.warning("Session missing params uid=%s ctr=%s cmac=%s", uid, ctr, cmac)
         return jsonify({"error": "Missing uid, ctr, or cmac"}), 400
 
     # 2 — Cryptographic CMAC verification
-    # Proves the tap came from a real chip holding the correct AES key
     if not verify_sdm_cmac(uid, ctr, cmac):
-        logger.warning("CMAC verification failed uid=%s ctr=%s", uid, ctr)
+        logger.warning("CMAC failed uid=%s ctr=%s", uid, ctr)
         return jsonify({"error": "Invalid CMAC — tap rejected"}), 401
 
-    # 3 — Look up the tag — confirms chip is registered and gets table + last counter
+    # 3 — Look up the tag in the database
     tag = get_tag(uid)
     if not tag:
-        logger.warning("Unregistered tag scanned uid=%s", uid)
+        logger.warning("Unregistered tag uid=%s", uid)
         return jsonify({"error": "Tag not registered — complete setup in /nfc-writer first"}), 404
 
-    # 4 — Replay protection: counter must be strictly greater than last seen
+    # 4 — Replay protection
     incoming_counter = int(ctr, 16)
     last_counter     = tag.get("last_counter", 0)
 
@@ -115,11 +118,11 @@ def session():
         logger.warning("Replay detected uid=%s incoming=%d last=%d", uid, incoming_counter, last_counter)
         return jsonify({"error": "Replay detected — this URL has already been used"}), 401
 
-    # 5 — Create a fresh single-use session (5 min expiry)
+    # 5 — Create session
     table_id    = tag["table_id"]
     new_session = create_session(uid, table_id, incoming_counter)
 
-    # 6 — Update last_counter — old URL is permanently dead from this point
+    # 6 — Update last_counter — old URL is permanently dead
     update_last_counter(uid, incoming_counter)
 
     logger.info("Valid tap: uid=%s table=%s session=%s", uid, table_id, new_session["id"])
@@ -130,18 +133,15 @@ def session():
     }), 200
 
 
-# ---------------------------------------------------------------------------
-# POST /api/consume
-#
-# Called immediately when the order page loads after session validation.
-# Marks session as used=TRUE — prevents copy/paste reuse.
-#
-# Body:    { "sessionId": "uuid" }
-# Returns: { "tableId": "Table-7" }
-# ---------------------------------------------------------------------------
-
 @app.route("/api/consume", methods=["POST"])
 def consume():
+    """
+    Mark a session as used — called when the order page first loads.
+    Prevents copy/paste reuse of the URL.
+
+    Body:    { "sessionId": "uuid" }
+    Returns: { "tableId": "Table-7" }
+    """
     body       = request.get_json(silent=True) or {}
     session_id = body.get("sessionId", "").strip()
 
@@ -151,7 +151,6 @@ def consume():
     session = consume_session(session_id)
 
     if not session:
-        # Determine which error to return
         existing = get_session(session_id)
         if not existing:
             return jsonify({"error": "Session not found"}), 404
@@ -166,18 +165,15 @@ def consume():
     }), 200
 
 
-# ---------------------------------------------------------------------------
-# POST /api/register-tag
-#
-# Called by the /nfc-writer page during one-time tag setup.
-# Saves UID → table ID mapping to PostgreSQL.
-#
-# Body:    { "uid": "04A1B2C3D4E5F6", "tableId": "Table-7" }
-# Returns: { "success": true, "uid": "...", "tableId": "..." }
-# ---------------------------------------------------------------------------
-
 @app.route("/api/register-tag", methods=["POST"])
 def register_tag_route():
+    """
+    Register a NFC tag UID to a table ID.
+    Called by the /nfc-writer page during one-time tag setup.
+
+    Body:    { "uid": "04A1B2C3D4E5F6", "tableId": "Table-7" }
+    Returns: { "success": true, "uid": "...", "tableId": "..." }
+    """
     body     = request.get_json(silent=True) or {}
     uid      = body.get("uid",     "").strip().upper()
     table_id = body.get("tableId", "").strip()
@@ -198,19 +194,15 @@ def register_tag_route():
     }), 200
 
 
-# ---------------------------------------------------------------------------
-# GET /api/health
-# Simple health check — confirm server is running.
-# ---------------------------------------------------------------------------
-
 @app.route("/api/health", methods=["GET"])
 def health():
+    """Health check — confirms server is running."""
     return jsonify({"status": "ok"}), 200
 
 
-# ---------------------------------------------------------------------------
+# ===========================================================================
 # Error handlers
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 @app.errorhandler(404)
 def not_found(e):
@@ -226,9 +218,10 @@ def server_error(e):
     return jsonify({"error": "Internal server error"}), 500
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Entry point — used locally only
+# In production Gunicorn calls app directly, not this block
+# ===========================================================================
 
 if __name__ == "__main__":
     port  = int(os.environ.get("PORT", 5000))
