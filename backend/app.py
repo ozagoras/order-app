@@ -197,11 +197,13 @@ def order_page():
 
     # -----------------------------------------------------------------------
     # Path A — First load: token in URL
+    # Do NOT consume the session — keep it active for 5 minutes
+    # The cookie is the gate — only the browser that got the cookie can refresh
     # -----------------------------------------------------------------------
     if not token:
         return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
 
-    # Look up session by token
+    # Look up session by token — must be unused and not expired
     session = get_session_by_token(token)
     if not session:
         return render_error(
@@ -209,7 +211,19 @@ def order_page():
             "This link has already been used or expired. Please tap the NFC tag again."
         )
 
-    # Consume session — marks used=TRUE so nobody else can use this token
+    # Check if this browser already has a cookie for this session
+    # If yes — this is a refresh, just render the page
+    if cookie_sid == session["id"]:
+        logger.info("Refresh via token+cookie match: table=%s", session["table_id"])
+        return render_template(
+            "order.html",
+            error=None,
+            error_title=None,
+            table_id=session["table_id"],
+            session_id=session["id"],
+        )
+
+    # First time loading — consume session and set cookie
     consumed = consume_session(session["id"])
     if not consumed:
         return render_error("Link already used", "Please tap the NFC tag again.")
@@ -217,8 +231,7 @@ def order_page():
     logger.info("Order page first load: table=%s session=%s",
                 session["table_id"], session["id"])
 
-    # Build response and set browser cookie
-    # Cookie contains session_id — used for refresh validation
+    # Build response with cookie
     response = make_response(render_template(
         "order.html",
         error=None,
@@ -227,7 +240,6 @@ def order_page():
         session_id=session["id"],
     ))
 
-    # Set cookie to expire at the same time as the session (5 minutes)
     expires_at = session["expires_at"]
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
@@ -238,9 +250,9 @@ def order_page():
         SESSION_COOKIE,
         value=session["id"],
         expires=expires_at,
-        httponly=True,    # not accessible via JavaScript
-        secure=True,      # HTTPS only
-        samesite="Strict" # not sent on cross-site requests
+        httponly=True,
+        secure=False,
+        samesite="Lax"
     )
 
     return response

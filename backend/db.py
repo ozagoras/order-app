@@ -116,6 +116,25 @@ def store_token(session_id: str, token: str) -> None:
             )
 
 
+def get_session_by_token_consumed(token: str) -> dict | None:
+    """
+    Look up a session by token even if already consumed (used=TRUE).
+    Used as fallback when cookie fails — allows refresh if session not expired.
+    """
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT * FROM sessions
+                WHERE token      = %s
+                  AND expires_at > %s
+                """,
+                (token.upper(), datetime.now(timezone.utc))
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
 def get_session_by_token(token: str) -> dict | None:
     """
     Look up a session by its opaque HMAC token.
