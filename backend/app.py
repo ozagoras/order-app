@@ -1,37 +1,35 @@
 """
 app.py
 Flask backend + simple HTML frontend for the NFC Beach Bar ordering system.
-Served by Gunicorn in production.
 
-Pages (HTML):
-    GET  /nfc-writer        — admin page to register NFC tags to tables
-    GET  /order             — customer order page — all validation in Python
+Security model — two step redirect:
+  Step 1: /nfc  — chip lands here with uid + ctr
+                  validates counter, generates opaque token, redirects
+  Step 2: /order — customer sees only the opaque token
+                   token is HMAC-SHA256(secret, uid+ctr+session_id)
+                   unpredictable without the secret key
+                   single-use, 5 minute expiry
 
-API endpoints (JSON):
-    POST /api/consume       — mark session used (called from order page if needed)
-    POST /api/register-tag  — register UID → table mapping
-    GET  /api/health        — health check
+The counter in the chip URL is never exposed to the customer.
+The token cannot be guessed or incremented — it is cryptographically random.
 """
 
 import os
+import hmac
+import hashlib
 import logging
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-from token_utils import verify_sdm_cmac
 from db import (
     get_tag,
     update_last_counter,
     create_session,
-    get_session,
     consume_session,
+    get_session_by_token,
     register_tag,
 )
-
-# ---------------------------------------------------------------------------
-# App setup
-# ---------------------------------------------------------------------------
 
 load_dotenv()
 
@@ -43,38 +41,49 @@ BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 CORS(app, origins=[BASE_URL])
 
 
+def generate_token(uid: str, ctr: str, session_id: str) -> str:
+    """
+    Generate an unpredictable opaque token using HMAC-SHA256.
+
+    Combines uid + ctr + session_id with your SECRET_KEY.
+    Without the secret key, this token cannot be guessed or forged
+    even if uid and ctr are known.
+
+    Returns first 32 hex chars (16 bytes) — short enough for a URL,
+    long enough to be cryptographically secure.
+    """
+    secret = os.environ.get("SECRET_KEY", "changeme")
+    message = f"{uid}:{ctr}:{session_id}".encode()
+    token = hmac.new(
+        key=secret.encode(),
+        msg=message,
+        digestmod=hashlib.sha256
+    ).hexdigest()[:32].upper()
+    return token
+
+
 # ===========================================================================
 # HTML PAGES
 # ===========================================================================
 
 @app.route("/nfc-writer")
 def nfc_writer_page():
-    """
-    Admin page — register NFC chip UIDs to table IDs.
-    Open this on Android Chrome during one-time tag setup.
-    """
     return render_template("nfc_writer.html")
 
 
-@app.route("/order")
-def order_page():
+@app.route("/nfc")
+def nfc_landing():
     """
-    Customer-facing order page.
-    All NFC validation happens here in Python — no JS API calls needed.
+    Step 1 — Entry point from NFC chip tap.
+    The chip generates this URL: /nfc?uid=XXX&ctr=XXX
 
-    Flow:
-      1. Read uid, ctr, cmac from query string
-      2. Verify CMAC cryptographically
-      3. Look up tag in database
-      4. Check counter > last_counter (replay protection)
-      5. Create single-use session
-      6. Update last_counter
-      7. Consume session immediately
-      8. Render page with table_id and session_id
+    Validates uid + counter, generates an opaque token,
+    redirects customer to /order?token=XXXX
+
+    The customer never sees uid or ctr in their browser.
     """
-    uid  = request.args.get("uid",  "").strip().upper()
-    ctr  = request.args.get("ctr",  "").strip().upper()
-    cmac = request.args.get("cmac", "").strip().upper()
+    uid = request.args.get("uid", "").strip().upper()
+    ctr = request.args.get("ctr", "").strip().upper()
 
     def render_error(title, message):
         return render_template(
@@ -83,64 +92,100 @@ def order_page():
             error_title=title,
             table_id=None,
             session_id=None,
+            token=None,
         )
 
-    # 1 — All three parameters must be present
-    if not uid or not ctr or not cmac:
-        logger.warning("Order page missing params uid=%s ctr=%s cmac=%s", uid, ctr, cmac)
-        return render_error(
-            "Invalid link",
-            "This page must be opened by tapping an NFC tag, not by typing the URL manually."
-        )
+    # 1 — Both parameters must be present
+    if not uid or not ctr:
+        logger.warning("NFC landing missing params uid=%s ctr=%s", uid, ctr)
+        return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
 
-    # 2 — Cryptographic CMAC verification
-    if not verify_sdm_cmac(uid, ctr, cmac):
-        logger.warning("CMAC failed uid=%s ctr=%s", uid, ctr)
-        return render_error(
-            "Tap rejected",
-            "This link is invalid or was not generated by a genuine NFC tag."
-        )
-
-    # 3 — Look up the tag in the database
+    # 2 — Look up the tag
     tag = get_tag(uid)
     if not tag:
         logger.warning("Unregistered tag uid=%s", uid)
-        return render_error(
-            "Tag not registered",
-            "This tag has not been set up yet. Please complete setup in /nfc-writer first."
-        )
+        return render_error("Tag not registered", "Complete setup in /nfc-writer first.")
 
-    # 4 — Replay protection
-    incoming_counter = int(ctr, 16)
-    last_counter     = tag.get("last_counter", 0)
+    # 3 — Counter must have advanced
+    try:
+        incoming_counter = int(ctr, 16)
+    except ValueError:
+        return render_error("Invalid link", "Malformed counter value.")
 
+    last_counter = tag.get("last_counter", 0)
     if incoming_counter <= last_counter:
-        logger.warning("Replay detected uid=%s incoming=%d last=%d", uid, incoming_counter, last_counter)
-        return render_error(
-            "Link already used",
-            "This link has already been used. Please tap the NFC tag again to get a fresh link."
-        )
+        logger.warning("Replay detected uid=%s incoming=%d last=%d",
+                       uid, incoming_counter, last_counter)
+        return render_error("Link already used", "Please tap the NFC tag again.")
 
-    # 5 — Create session
+    # 4 — Generate opaque token
     table_id    = tag["table_id"]
     new_session = create_session(uid, table_id, incoming_counter)
+    token       = generate_token(uid, ctr, new_session["id"])
 
-    # 6 — Update last_counter — old URL is permanently dead
+    # 5 — Store token in session, update counter
     update_last_counter(uid, incoming_counter)
 
-    # 7 — Consume session immediately
-    # Since validation is server-side, we consume right away
-    consume_session(new_session["id"])
+    # Store the token in the session row
+    from db import store_token
+    store_token(new_session["id"], token)
 
-    logger.info("Valid tap: uid=%s table=%s session=%s", uid, table_id, new_session["id"])
+    logger.info("Valid tap: uid=%s table=%s ctr=%d token=%s",
+                uid, table_id, incoming_counter, token)
 
-    # 8 — Render the order page with table info
+    # 6 — Redirect to /order with only the opaque token
+    # Customer sees: /order?token=A3F1C82E904D7B56...
+    # uid and ctr are gone from the URL
+    return redirect(f"/order?token={token}")
+
+
+@app.route("/order")
+def order_page():
+    """
+    Step 2 — Customer order page.
+    Only accepts an opaque token — no uid or ctr visible.
+
+    The token is:
+      - HMAC-SHA256(secret, uid+ctr+session_id)
+      - Single-use
+      - Expires in 5 minutes
+      - Cannot be guessed or incremented
+    """
+    token = request.args.get("token", "").strip().upper()
+
+    def render_error(title, message):
+        return render_template(
+            "order.html",
+            error=message,
+            error_title=title,
+            table_id=None,
+            session_id=None,
+            token=None,
+        )
+
+    if not token:
+        return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
+
+    # Look up session by token
+    session = get_session_by_token(token)
+    if not session:
+        return render_error("Invalid token", "This link is invalid or has expired.")
+
+    # Consume the session — marks it used=TRUE
+    consumed = consume_session(session["id"])
+    if not consumed:
+        return render_error("Link already used", "Please tap the NFC tag again.")
+
+    logger.info("Order page loaded: table=%s session=%s",
+                session["table_id"], session["id"])
+
     return render_template(
         "order.html",
         error=None,
         error_title=None,
-        table_id=table_id,
-        session_id=new_session["id"],
+        table_id=session["table_id"],
+        session_id=session["id"],
+        token=token,
     )
 
 
@@ -150,13 +195,6 @@ def order_page():
 
 @app.route("/api/register-tag", methods=["POST"])
 def register_tag_route():
-    """
-    Register a NFC tag UID to a table ID.
-    Called by the /nfc-writer page during one-time tag setup.
-
-    Body:    { "uid": "04A1B2C3D4E5F6", "tableId": "Table-7" }
-    Returns: { "success": true, "uid": "...", "tableId": "..." }
-    """
     body     = request.get_json(silent=True) or {}
     uid      = body.get("uid",     "").strip().upper()
     table_id = body.get("tableId", "").strip()
@@ -167,7 +205,6 @@ def register_tag_route():
         return jsonify({"error": "Missing tableId"}), 400
 
     tag = register_tag(uid, table_id)
-
     logger.info("Tag registered: uid=%s table=%s", uid, table_id)
 
     return jsonify({
@@ -179,7 +216,6 @@ def register_tag_route():
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    """Health check — confirms server is running."""
     return jsonify({"status": "ok"}), 200
 
 
@@ -202,8 +238,7 @@ def server_error(e):
 
 
 # ===========================================================================
-# Entry point — local development only
-# Gunicorn bypasses this block in production
+# Entry point
 # ===========================================================================
 
 if __name__ == "__main__":

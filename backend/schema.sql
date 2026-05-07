@@ -1,61 +1,33 @@
 -- ============================================================
--- Supabase SQL Schema
--- NFC Beach Bar Ordering System
--- ============================================================
--- Run this in: Supabase dashboard → SQL Editor → New query
+-- PostgreSQL Schema — NFC Beach Bar Ordering System
 -- ============================================================
 
-
--- ------------------------------------------------------------
--- nfc_tags
--- Maps each physical NFC chip (by UID) to a table in the bar.
--- Also tracks the last seen counter for replay protection.
--- ------------------------------------------------------------
-
-create table if not exists nfc_tags (
-  uid           text    primary key,        -- e.g. "04A1B2C3D4E5F6"  (7 bytes hex, uppercase)
-  table_id      text    not null,           -- e.g. "Table-7" or "Beach-A3"
-  last_counter  integer not null default 0  -- last valid counter seen — used for replay protection
+CREATE TABLE IF NOT EXISTS nfc_tags (
+    uid           TEXT    PRIMARY KEY,
+    table_id      TEXT    NOT NULL,
+    last_counter  INTEGER NOT NULL DEFAULT 0
 );
 
--- Index for fast UID lookups on every scan
-create index if not exists nfc_tags_uid_idx on nfc_tags (uid);
-
-
--- ------------------------------------------------------------
--- sessions
--- Single-use sessions created on every valid NFC tap.
--- Each session is tied to one tap and can only be consumed once.
--- ------------------------------------------------------------
-
-create table if not exists sessions (
-  id          uuid        primary key default gen_random_uuid(),
-  uid         text        not null,           -- which chip generated this session
-  table_id    text        not null,           -- which table (denormalised for fast access)
-  counter     integer     not null,           -- the ctr value from this specific tap
-  used        boolean     not null default false,
-  expires_at  timestamptz not null,           -- now() + 5 minutes, set by Flask
-  created_at  timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS sessions (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    uid         TEXT        NOT NULL,
+    table_id    TEXT        NOT NULL,
+    counter     INTEGER     NOT NULL,
+    token       TEXT        NOT NULL DEFAULT '',  -- HMAC token, opaque to customer
+    used        BOOLEAN     NOT NULL DEFAULT FALSE,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Index for fast session lookups by ID
-create index if not exists sessions_id_idx on sessions (id);
+CREATE INDEX IF NOT EXISTS sessions_id_idx    ON sessions (id);
+CREATE INDEX IF NOT EXISTS sessions_uid_idx   ON sessions (uid);
+CREATE INDEX IF NOT EXISTS sessions_token_idx ON sessions (token);  -- fast token lookup
 
--- Optional: auto-delete expired sessions after 1 hour to keep the table clean
--- (Supabase does not have built-in TTL, but you can run this manually or via a cron)
--- delete from sessions where expires_at < now() - interval '1 hour';
+-- If sessions table already exists, just add the token column:
+-- ALTER TABLE sessions ADD COLUMN IF NOT EXISTS token TEXT NOT NULL DEFAULT '';
+-- CREATE INDEX IF NOT EXISTS sessions_token_idx ON sessions (token);
 
-
--- ------------------------------------------------------------
--- Row Level Security (RLS)
--- ------------------------------------------------------------
--- Enable RLS on both tables.
--- The Flask backend uses the service role key which bypasses RLS entirely,
--- so these policies only affect client-side access (which we block completely).
-
-alter table nfc_tags enable row level security;
-alter table sessions  enable row level security;
-
--- Block all direct client access — Flask backend handles everything
--- No policies needed because service role key bypasses RLS.
--- This just ensures no anon/authenticated client can read these tables directly.
+-- Verify
+SELECT 'nfc_tags' AS table_name, COUNT(*) AS rows FROM nfc_tags
+UNION ALL
+SELECT 'sessions', COUNT(*) FROM sessions;
