@@ -152,6 +152,8 @@ def order_page():
     token      = request.args.get("token", "").strip().upper()
     cookie_sid = request.cookies.get(SESSION_COOKIE, "").strip()
 
+    logger.info("Order page hit: token=%s cookie=%s", token[:8] if token else "none", cookie_sid[:8] if cookie_sid else "none")
+
     def render_error(title, message):
         return render_template(
             "order.html",
@@ -163,8 +165,11 @@ def order_page():
 
     # -----------------------------------------------------------------------
     # Path B — Refresh: customer already has a cookie
+    # Cookie takes priority over token — even if token is still in the URL
+    # This handles the case where the customer refreshes and the browser
+    # still shows /order?token=XXX in the address bar
     # -----------------------------------------------------------------------
-    if cookie_sid and not token:
+    if cookie_sid:
         session = get_session(cookie_sid)
 
         if not session:
