@@ -2,23 +2,22 @@
 app.py
 Flask backend + simple HTML frontend for the NFC Beach Bar ordering system.
 
-Security model — two step redirect:
-  Step 1: /nfc  — chip lands here with uid + ctr
-                  validates counter, generates opaque token, redirects
+Security model — two step redirect + browser session cookie:
+  Step 1: /nfc   — chip lands here with uid + ctr
+                   validates counter, generates opaque token, redirects
   Step 2: /order — customer sees only the opaque token
-                   token is HMAC-SHA256(secret, uid+ctr+session_id)
-                   unpredictable without the secret key
-                   single-use, 5 minute expiry
-
-The counter in the chip URL is never exposed to the customer.
-The token cannot be guessed or incremented — it is cryptographically random.
+                   on first load: consumes token, sets browser cookie
+                   on refresh:    validates cookie instead of token
+                   cookie is valid for 5 minutes
+                   anyone else opening the same URL is rejected
 """
 
 import os
 import hmac
 import hashlib
 import logging
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from datetime import datetime, timezone, timedelta
+from flask import Flask, request, jsonify, render_template, redirect, make_response
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -28,7 +27,9 @@ from db import (
     create_session,
     consume_session,
     get_session_by_token,
+    get_session,
     register_tag,
+    store_token,
 )
 
 load_dotenv()
@@ -40,26 +41,22 @@ logger = logging.getLogger(__name__)
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 CORS(app, origins=[BASE_URL])
 
+# Cookie name stored in customer browser
+SESSION_COOKIE = "nfc_session"
+
 
 def generate_token(uid: str, ctr: str, session_id: str) -> str:
     """
     Generate an unpredictable opaque token using HMAC-SHA256.
-
-    Combines uid + ctr + session_id with your SECRET_KEY.
-    Without the secret key, this token cannot be guessed or forged
-    even if uid and ctr are known.
-
-    Returns first 32 hex chars (16 bytes) — short enough for a URL,
-    long enough to be cryptographically secure.
+    Combines uid + ctr + session_id with SECRET_KEY.
     """
-    secret = os.environ.get("SECRET_KEY", "changeme")
+    secret  = os.environ.get("SECRET_KEY", "changeme")
     message = f"{uid}:{ctr}:{session_id}".encode()
-    token = hmac.new(
+    return hmac.new(
         key=secret.encode(),
         msg=message,
         digestmod=hashlib.sha256
     ).hexdigest()[:32].upper()
-    return token
 
 
 # ===========================================================================
@@ -75,12 +72,10 @@ def nfc_writer_page():
 def nfc_landing():
     """
     Step 1 — Entry point from NFC chip tap.
-    The chip generates this URL: /nfc?uid=XXX&ctr=XXX
+    Chip generates: /nfc?uid=XXX&ctr=XXX
 
-    Validates uid + counter, generates an opaque token,
+    Validates uid + counter, generates opaque HMAC token,
     redirects customer to /order?token=XXXX
-
-    The customer never sees uid or ctr in their browser.
     """
     uid = request.args.get("uid", "").strip().upper()
     ctr = request.args.get("ctr", "").strip().upper()
@@ -92,7 +87,6 @@ def nfc_landing():
             error_title=title,
             table_id=None,
             session_id=None,
-            token=None,
         )
 
     # 1 — Both parameters must be present
@@ -118,24 +112,19 @@ def nfc_landing():
                        uid, incoming_counter, last_counter)
         return render_error("Link already used", "Please tap the NFC tag again.")
 
-    # 4 — Generate opaque token
+    # 4 — Create session + generate token
     table_id    = tag["table_id"]
     new_session = create_session(uid, table_id, incoming_counter)
     token       = generate_token(uid, ctr, new_session["id"])
 
-    # 5 — Store token in session, update counter
-    update_last_counter(uid, incoming_counter)
-
-    # Store the token in the session row
-    from db import store_token
+    # 5 — Store token + update counter
     store_token(new_session["id"], token)
+    update_last_counter(uid, incoming_counter)
 
     logger.info("Valid tap: uid=%s table=%s ctr=%d token=%s",
                 uid, table_id, incoming_counter, token)
 
-    # 6 — Redirect to /order with only the opaque token
-    # Customer sees: /order?token=A3F1C82E904D7B56...
-    # uid and ctr are gone from the URL
+    # 6 — Redirect to /order with opaque token
     return redirect(f"/order?token={token}")
 
 
@@ -143,15 +132,25 @@ def nfc_landing():
 def order_page():
     """
     Step 2 — Customer order page.
-    Only accepts an opaque token — no uid or ctr visible.
 
-    The token is:
-      - HMAC-SHA256(secret, uid+ctr+session_id)
-      - Single-use
-      - Expires in 5 minutes
-      - Cannot be guessed or incremented
+    Two paths:
+      A) First load — token in URL query string
+         - Look up session by token
+         - Consume session (marks used=TRUE)
+         - Set browser cookie with session_id + expiry
+         - Render order page
+
+      B) Refresh — session_id in browser cookie
+         - Read cookie
+         - Validate session still exists and not expired
+         - Render order page (no token needed)
+
+    This allows the customer to refresh freely for 5 minutes.
+    Anyone else opening the same URL is rejected because
+    the token is already consumed and they have no cookie.
     """
-    token = request.args.get("token", "").strip().upper()
+    token      = request.args.get("token", "").strip().upper()
+    cookie_sid = request.cookies.get(SESSION_COOKIE, "").strip()
 
     def render_error(title, message):
         return render_template(
@@ -160,33 +159,86 @@ def order_page():
             error_title=title,
             table_id=None,
             session_id=None,
-            token=None,
         )
 
+    # -----------------------------------------------------------------------
+    # Path B — Refresh: customer already has a cookie
+    # -----------------------------------------------------------------------
+    if cookie_sid and not token:
+        session = get_session(cookie_sid)
+
+        if not session:
+            return render_error("Session not found", "Please tap the NFC tag again.")
+
+        # Check session has not expired
+        expires_at = session["expires_at"]
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        if datetime.now(timezone.utc) > expires_at:
+            return render_error("Session expired", "Please tap the NFC tag again.")
+
+        logger.info("Refresh via cookie: session=%s table=%s", cookie_sid, session["table_id"])
+
+        return render_template(
+            "order.html",
+            error=None,
+            error_title=None,
+            table_id=session["table_id"],
+            session_id=session["id"],
+        )
+
+    # -----------------------------------------------------------------------
+    # Path A — First load: token in URL
+    # -----------------------------------------------------------------------
     if not token:
         return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
 
     # Look up session by token
     session = get_session_by_token(token)
     if not session:
-        return render_error("Invalid token", "This link is invalid or has expired.")
+        return render_error(
+            "Invalid or expired token",
+            "This link has already been used or expired. Please tap the NFC tag again."
+        )
 
-    # Consume the session — marks it used=TRUE
+    # Consume session — marks used=TRUE so nobody else can use this token
     consumed = consume_session(session["id"])
     if not consumed:
         return render_error("Link already used", "Please tap the NFC tag again.")
 
-    logger.info("Order page loaded: table=%s session=%s",
+    logger.info("Order page first load: table=%s session=%s",
                 session["table_id"], session["id"])
 
-    return render_template(
+    # Build response and set browser cookie
+    # Cookie contains session_id — used for refresh validation
+    response = make_response(render_template(
         "order.html",
         error=None,
         error_title=None,
         table_id=session["table_id"],
         session_id=session["id"],
-        token=token,
+    ))
+
+    # Set cookie to expire at the same time as the session (5 minutes)
+    expires_at = session["expires_at"]
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    response.set_cookie(
+        SESSION_COOKIE,
+        value=session["id"],
+        expires=expires_at,
+        httponly=True,    # not accessible via JavaScript
+        secure=True,      # HTTPS only
+        samesite="Strict" # not sent on cross-site requests
     )
+
+    return response
 
 
 # ===========================================================================
