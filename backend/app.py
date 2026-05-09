@@ -286,13 +286,13 @@ def admin_dashboard():
             time_str = ""
 
         orders.append({
-            "id":         str(o["id"]),
-            "short_id":   str(o["id"])[:8].upper(),
-            "table_id":   o["table_id"],
-            "items":      o["order_items"],
-            "status":     o["status"],
-            "total":      float(o["total"]),
-            "time_str":   time_str,
+            "id":          str(o["id"]),
+            "short_id":    str(o["id"])[:8].upper(),
+            "table_id":    o["table_id"],
+            "order_items": o["order_items"],
+            "status":      o["status"],
+            "total":       float(o["total"]),
+            "time_str":    time_str,
         })
 
     pending_count   = sum(1 for o in orders if o["status"] == "pending")
