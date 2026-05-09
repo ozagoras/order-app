@@ -5,6 +5,7 @@ All PostgreSQL database operations for the NFC beach bar system.
 
 import os
 import uuid
+import json
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -33,7 +34,7 @@ def _get_conn():
 
 
 # ---------------------------------------------------------------------------
-# nfc_tags table
+# nfc_tags
 # ---------------------------------------------------------------------------
 
 def get_tag(uid: str) -> dict | None:
@@ -75,17 +76,12 @@ def register_tag(uid: str, table_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# sessions table
+# sessions
 # ---------------------------------------------------------------------------
 
 def create_session(uid: str, table_id: str, counter: int) -> dict:
-    """
-    Create a new session after a valid NFC tap.
-    Token is stored separately via store_token() after generation.
-    """
     session_id = str(uuid.uuid4())
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
-
     with _get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -95,7 +91,6 @@ def create_session(uid: str, table_id: str, counter: int) -> dict:
                 """,
                 (session_id, uid.upper(), table_id, counter, expires_at)
             )
-
     return {
         "id":         session_id,
         "uid":        uid.upper(),
@@ -107,7 +102,6 @@ def create_session(uid: str, table_id: str, counter: int) -> dict:
 
 
 def store_token(session_id: str, token: str) -> None:
-    """Store the generated HMAC token in the session row."""
     with _get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -116,30 +110,7 @@ def store_token(session_id: str, token: str) -> None:
             )
 
 
-def get_session_by_token_consumed(token: str) -> dict | None:
-    """
-    Look up a session by token even if already consumed (used=TRUE).
-    Used as fallback when cookie fails — allows refresh if session not expired.
-    """
-    with _get_conn() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT * FROM sessions
-                WHERE token      = %s
-                  AND expires_at > %s
-                """,
-                (token.upper(), datetime.now(timezone.utc))
-            )
-            row = cur.fetchone()
-            return dict(row) if row else None
-
-
 def get_session_by_token(token: str) -> dict | None:
-    """
-    Look up a session by its opaque HMAC token.
-    Used in /order to validate the redirect token.
-    """
     with _get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
@@ -164,20 +135,96 @@ def get_session(session_id: str) -> dict | None:
 
 
 def consume_session(session_id: str) -> dict | None:
-    """Atomically mark session as used."""
     now = datetime.now(timezone.utc)
     with _get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                UPDATE sessions
-                SET used = TRUE
-                WHERE id         = %s
-                  AND used       = FALSE
-                  AND expires_at > %s
+                UPDATE sessions SET used = TRUE
+                WHERE id = %s AND used = FALSE AND expires_at > %s
                 RETURNING *
                 """,
                 (session_id, now)
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# orders
+# ---------------------------------------------------------------------------
+
+def create_order(session_id: str, table_id: str, items: list, total: float) -> dict:
+    order_id = str(uuid.uuid4())
+    with _get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO orders (id, session_id, table_id, items, status, total)
+                VALUES (%s, %s, %s, %s, 'pending', %s)
+                """,
+                (order_id, session_id, table_id, json.dumps(items), total)
+            )
+    return {
+        "id":         order_id,
+        "session_id": session_id,
+        "table_id":   table_id,
+        "items":      items,
+        "status":     "pending",
+        "total":      total,
+    }
+
+
+def get_all_orders() -> list:
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT * FROM orders
+                ORDER BY created_at DESC
+                LIMIT 100
+                """
+            )
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+
+
+def get_orders_by_status(status: str) -> list:
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM orders WHERE status = %s ORDER BY created_at DESC",
+                (status,)
+            )
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+
+
+def update_order_status(order_id: str, status: str) -> dict | None:
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE orders SET status = %s, updated_at = NOW()
+                WHERE id = %s
+                RETURNING *
+                """,
+                (status, order_id)
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# admin_users
+# ---------------------------------------------------------------------------
+
+def get_admin_user(username: str) -> dict | None:
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM admin_users WHERE username = %s",
+                (username,)
             )
             row = cur.fetchone()
             return dict(row) if row else None

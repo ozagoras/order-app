@@ -10,6 +10,11 @@ Security model — two step redirect + browser session cookie:
                    on refresh:    validates cookie instead of token
                    cookie is valid for 5 minutes
                    anyone else opening the same URL is rejected
+
+Admin:
+  /admin/login   — login page
+  /admin         — dashboard showing all orders
+  /admin/order/<id>/status — update order status
 """
 
 import os
@@ -17,9 +22,13 @@ import hmac
 import hashlib
 import logging
 from datetime import datetime, timezone, timedelta
-from flask import Flask, request, jsonify, render_template, redirect, make_response
+from functools import wraps
+from flask import (Flask, request, jsonify, render_template,
+                   redirect, make_response, session, url_for)
 from flask_cors import CORS
 from dotenv import load_dotenv
+
+import bcrypt
 
 from db import (
     get_tag,
@@ -30,26 +39,26 @@ from db import (
     get_session,
     register_tag,
     store_token,
+    create_order,
+    get_all_orders,
+    update_order_status,
+    get_admin_user,
 )
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "changeme")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 CORS(app, origins=[BASE_URL])
 
-# Cookie name stored in customer browser
 SESSION_COOKIE = "nfc_session"
 
 
 def generate_token(uid: str, ctr: str, session_id: str) -> str:
-    """
-    Generate an unpredictable opaque token using HMAC-SHA256.
-    Combines uid + ctr + session_id with SECRET_KEY.
-    """
     secret  = os.environ.get("SECRET_KEY", "changeme")
     message = f"{uid}:{ctr}:{session_id}".encode()
     return hmac.new(
@@ -59,8 +68,21 @@ def generate_token(uid: str, ctr: str, session_id: str) -> str:
     ).hexdigest()[:32].upper()
 
 
+# ---------------------------------------------------------------------------
+# Admin auth decorator
+# ---------------------------------------------------------------------------
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("admin_logged_in"):
+            return redirect(url_for("admin_login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
 # ===========================================================================
-# HTML PAGES
+# CUSTOMER PAGES
 # ===========================================================================
 
 @app.route("/nfc-writer")
@@ -70,38 +92,20 @@ def nfc_writer_page():
 
 @app.route("/nfc")
 def nfc_landing():
-    """
-    Step 1 — Entry point from NFC chip tap.
-    Chip generates: /nfc?uid=XXX&ctr=XXX
-
-    Validates uid + counter, generates opaque HMAC token,
-    redirects customer to /order?token=XXXX
-    """
     uid = request.args.get("uid", "").strip().upper()
     ctr = request.args.get("ctr", "").strip().upper()
 
     def render_error(title, message):
-        return render_template(
-            "order.html",
-            error=message,
-            error_title=title,
-            table_id=None,
-            session_id=None,
-            counter=None,
-        )
+        return render_template("order.html", error=message, error_title=title,
+                               table_id=None, session_id=None, counter=None)
 
-    # 1 — Both parameters must be present
     if not uid or not ctr:
-        logger.warning("NFC landing missing params uid=%s ctr=%s", uid, ctr)
         return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
 
-    # 2 — Look up the tag
     tag = get_tag(uid)
     if not tag:
-        logger.warning("Unregistered tag uid=%s", uid)
         return render_error("Tag not registered", "Complete setup in /nfc-writer first.")
 
-    # 3 — Counter must have advanced
     try:
         incoming_counter = int(ctr, 16)
     except ValueError:
@@ -109,158 +113,158 @@ def nfc_landing():
 
     last_counter = tag.get("last_counter", 0)
     if incoming_counter <= last_counter:
-        logger.warning("Replay detected uid=%s incoming=%d last=%d",
-                       uid, incoming_counter, last_counter)
+        logger.warning("Replay detected uid=%s incoming=%d last=%d", uid, incoming_counter, last_counter)
         return render_error("Link already used", "Please tap the NFC tag again.")
 
-    # 4 — Create session + generate token
     table_id    = tag["table_id"]
     new_session = create_session(uid, table_id, incoming_counter)
     token       = generate_token(uid, ctr, new_session["id"])
 
-    # 5 — Store token + update counter
     store_token(new_session["id"], token)
     update_last_counter(uid, incoming_counter)
 
-    logger.info("Valid tap: uid=%s table=%s ctr=%d token=%s",
-                uid, table_id, incoming_counter, token)
+    logger.info("Valid tap: uid=%s table=%s ctr=%d token=%s", uid, table_id, incoming_counter, token)
 
-    # 6 — Redirect to /order with opaque token
     return redirect(f"/order?token={token}")
 
 
-@app.route("/order")
+@app.route("/order", methods=["GET", "POST"])
 def order_page():
-    """
-    Step 2 — Customer order page.
+    # -----------------------------------------------------------------------
+    # POST — Customer submits order
+    # Cookie must be present — proves this is the device that tapped
+    # -----------------------------------------------------------------------
+    if request.method == "POST":
+        cookie_sid = request.cookies.get(SESSION_COOKIE, "").strip()
+        if not cookie_sid:
+            return jsonify({"error": "Unauthorized"}), 401
 
-    Two paths:
-      A) First load — token in URL query string
-         - Look up session by token
-         - Consume session (marks used=TRUE)
-         - Set browser cookie with session_id + expiry
-         - Render order page
+        sess = get_session(cookie_sid)
+        if not sess:
+            return jsonify({"error": "Session not found"}), 404
 
-      B) Refresh — session_id in browser cookie
-         - Read cookie
-         - Validate session still exists and not expired
-         - Render order page (no token needed)
+        body     = request.get_json(silent=True) or {}
+        items    = body.get("items", [])
+        if not items:
+            return jsonify({"error": "No items in order"}), 400
 
-    This allows the customer to refresh freely for 5 minutes.
-    Anyone else opening the same URL is rejected because
-    the token is already consumed and they have no cookie.
-    """
-    token      = request.args.get("token", "").strip().upper()
+        total = sum(item.get("price", 0) * item.get("qty", 1) for item in items)
+        order = create_order(sess["id"], sess["table_id"], items, total)
+        logger.info("Order placed: table=%s total=%.2f", sess["table_id"], total)
+        return jsonify({"success": True, "orderId": order["id"]}), 200
+
+    # -----------------------------------------------------------------------
+    # GET — Show the order page
+    # -----------------------------------------------------------------------
     cookie_sid = request.cookies.get(SESSION_COOKIE, "").strip()
+    token      = request.args.get("token", "").strip().upper()
 
-    logger.info("Order page hit: token=%s cookie=%s", token[:8] if token else "none", cookie_sid[:8] if cookie_sid else "none")
+    logger.info("Order page hit: token=%s cookie=%s",
+                token[:8] if token else "none",
+                cookie_sid[:8] if cookie_sid else "none")
 
     def render_error(title, message):
-        return render_template(
-            "order.html",
-            error=message,
-            error_title=title,
-            table_id=None,
-            session_id=None,
-            counter=None,
-        )
+        return render_template("order.html", error=message, error_title=title,
+                               table_id=None, session_id=None, counter=None)
 
-    # -----------------------------------------------------------------------
-    # Path B — Refresh: customer already has a cookie
-    # Cookie takes priority over token — even if token is still in the URL
-    # This handles the case where the customer refreshes and the browser
-    # still shows /order?token=XXX in the address bar
-    # -----------------------------------------------------------------------
+    # Path B — Refresh via cookie
     if cookie_sid:
-        session = get_session(cookie_sid)
-
-        if not session:
+        sess = get_session(cookie_sid)
+        if not sess:
             return render_error("Session not found", "Please tap the NFC tag again.")
 
-        # Check session has not expired
-        expires_at = session["expires_at"]
+        expires_at = sess["expires_at"]
         if isinstance(expires_at, str):
             expires_at = datetime.fromisoformat(expires_at)
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
-
         if datetime.now(timezone.utc) > expires_at:
             return render_error("Session expired", "Please tap the NFC tag again.")
 
-        logger.info("Refresh via cookie: session=%s table=%s", cookie_sid, session["table_id"])
+        logger.info("Refresh via cookie: session=%s table=%s", cookie_sid, sess["table_id"])
+        return render_template("order.html", error=None, error_title=None,
+                               table_id=sess["table_id"], session_id=sess["id"],
+                               counter=sess["counter"])
 
-        return render_template(
-            "order.html",
-            error=None,
-            error_title=None,
-            table_id=session["table_id"],
-            session_id=session["id"],
-            counter=session["counter"],
-        )
-
-    # -----------------------------------------------------------------------
-    # Path A — First load: token in URL
-    # Do NOT consume the session — keep it active for 5 minutes
-    # The cookie is the gate — only the browser that got the cookie can refresh
-    # -----------------------------------------------------------------------
+    # Path A — First load via token
     if not token:
         return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
 
-    # Look up session by token — must be unused and not expired
-    session = get_session_by_token(token)
-    if not session:
-        return render_error(
-            "Invalid or expired token",
-            "This link has already been used or expired. Please tap the NFC tag again."
-        )
+    sess = get_session_by_token(token)
+    if not sess:
+        return render_error("Invalid or expired token",
+                            "This link has already been used or expired. Please tap the NFC tag again.")
 
-    # Check if this browser already has a cookie for this session
-    # If yes — this is a refresh, just render the page
-    if cookie_sid == session["id"]:
-        logger.info("Refresh via token+cookie match: table=%s", session["table_id"])
-        return render_template(
-            "order.html",
-            error=None,
-            error_title=None,
-            table_id=session["table_id"],
-            session_id=session["id"],
-            counter=session["counter"],
-        )
+    if cookie_sid == sess["id"]:
+        return render_template("order.html", error=None, error_title=None,
+                               table_id=sess["table_id"], session_id=sess["id"],
+                               counter=sess["counter"])
 
-    # First time loading — consume session and set cookie
-    consumed = consume_session(session["id"])
+    consumed = consume_session(sess["id"])
     if not consumed:
         return render_error("Link already used", "Please tap the NFC tag again.")
 
-    logger.info("Order page first load: table=%s session=%s",
-                session["table_id"], session["id"])
+    logger.info("Order page first load: table=%s session=%s", sess["table_id"], sess["id"])
 
-    # Build response with cookie
-    response = make_response(render_template(
-        "order.html",
-        error=None,
-        error_title=None,
-        table_id=session["table_id"],
-        session_id=session["id"],
-        counter=session["counter"],
-    ))
+    response = make_response(render_template("order.html", error=None, error_title=None,
+                                             table_id=sess["table_id"], session_id=sess["id"],
+                                             counter=sess["counter"]))
 
-    expires_at = session["expires_at"]
+    expires_at = sess["expires_at"]
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    response.set_cookie(
-        SESSION_COOKIE,
-        value=session["id"],
-        expires=expires_at,
-        httponly=True,
-        secure=False,
-        samesite="Lax"
-    )
-
+    response.set_cookie(SESSION_COOKIE, value=sess["id"], expires=expires_at,
+                        httponly=True, secure=False, samesite="Lax")
     return response
+
+
+# ===========================================================================
+# ADMIN PAGES
+# ===========================================================================
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        user = get_admin_user(username)
+        if user and bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+            session["admin_logged_in"] = True
+            session["admin_username"]  = username
+            return redirect(url_for("admin_dashboard"))
+        else:
+            error = "Invalid username or password"
+
+    return render_template("admin_login.html", error=error)
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.clear()
+    return redirect(url_for("admin_login"))
+
+
+@app.route("/admin")
+@admin_required
+def admin_dashboard():
+    orders = get_all_orders()
+    return render_template("admin.html", orders=orders)
+
+
+@app.route("/admin/order/<order_id>/status", methods=["POST"])
+@admin_required
+def update_status(order_id):
+    status = request.form.get("status", "").strip()
+    if status not in ("pending", "preparing", "ready", "delivered"):
+        return jsonify({"error": "Invalid status"}), 400
+
+    update_order_status(order_id, status)
+    return redirect(url_for("admin_dashboard"))
 
 
 # ===========================================================================
@@ -280,12 +284,7 @@ def register_tag_route():
 
     tag = register_tag(uid, table_id)
     logger.info("Tag registered: uid=%s table=%s", uid, table_id)
-
-    return jsonify({
-        "success": True,
-        "uid":     tag["uid"],
-        "tableId": tag["table_id"],
-    }), 200
+    return jsonify({"success": True, "uid": tag["uid"], "tableId": tag["table_id"]}), 200
 
 
 @app.route("/api/health", methods=["GET"])

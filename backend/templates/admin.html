@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Beach Bar</title>
+  <meta http-equiv="refresh" content="30"> <!-- auto-refresh every 30s -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+    :root {
+      --ocean: #1A6B7C;
+      --sun:   #F4A825;
+      --coral: #E8603A;
+      --dark:  #1C2B2D;
+      --bg:    #F5F7F7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    nav {
+      background: var(--dark);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    nav .brand {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--sun);
+    }
+    nav a {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+    }
+    nav a:hover { color: #fff; }
+
+    /* Header */
+    .page-header {
+      padding: 28px 24px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .page-header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--dark);
+    }
+    .refresh-note {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 0 24px 20px;
+    }
+    .stat {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .stat .label { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat .value { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--dark); }
+
+    /* Orders */
+    .orders { padding: 0 24px 40px; }
+    .orders-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ocean);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .order-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .order-card.pending  { border-left: 4px solid var(--sun); }
+    .order-card.preparing{ border-left: 4px solid var(--ocean); }
+    .order-card.ready    { border-left: 4px solid #22c55e; }
+    .order-card.delivered{ border-left: 4px solid #d1d5db; opacity: 0.6; }
+
+    .order-main { flex: 1; min-width: 0; }
+    .order-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .order-table {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--dark);
+    }
+    .status-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      text-transform: capitalize;
+    }
+    .status-badge.pending   { background: #FEF3C7; color: #92400E; }
+    .status-badge.preparing { background: #DBEAFE; color: #1E40AF; }
+    .status-badge.ready     { background: #D1FAE5; color: #065F46; }
+    .status-badge.delivered { background: #F3F4F6; color: #6B7280; }
+
+    .order-time { font-size: 11px; color: #aaa; margin-left: auto; }
+    .order-id   { font-size: 10px; color: #ccc; font-family: monospace; }
+
+    .order-items { margin-bottom: 10px; }
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #444;
+      padding: 2px 0;
+    }
+    .order-item .item-name { color: var(--dark); font-weight: 500; }
+    .order-item .item-price { color: #888; }
+
+    .order-total {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ocean);
+      border-top: 1px solid #f0f0f0;
+      padding-top: 8px;
+    }
+
+    /* Status buttons */
+    .status-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 110px;
+    }
+    .status-btn {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity 0.2s;
+      text-align: center;
+    }
+    .status-btn:hover { opacity: 0.8; }
+    .btn-preparing { background: #DBEAFE; color: #1E40AF; }
+    .btn-ready     { background: #D1FAE5; color: #065F46; }
+    .btn-delivered { background: #F3F4F6; color: #6B7280; }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #aaa;
+      font-size: 15px;
+    }
+    .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">🍹 Beach Bar Admin</div>
+  <a href="/admin/logout">Sign out</a>
+</nav>
+
+{% set pending_orders   = orders | selectattr("status", "equalto", "pending")   | list %}
+{% set preparing_orders = orders | selectattr("status", "equalto", "preparing") | list %}
+{% set ready_orders     = orders | selectattr("status", "equalto", "ready")     | list %}
+{% set delivered_orders = orders | selectattr("status", "equalto", "delivered") | list %}
+
+<div class="page-header">
+  <h1>Orders</h1>
+  <div class="refresh-note">Auto-refreshes every 30s</div>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat">
+    <div class="label">Pending</div>
+    <div class="value" style="color:var(--sun)">{{ pending_orders | length }}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Preparing</div>
+    <div class="value" style="color:var(--ocean)">{{ preparing_orders | length }}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Ready</div>
+    <div class="value" style="color:#22c55e">{{ ready_orders | length }}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Delivered</div>
+    <div class="value" style="color:#9ca3af">{{ delivered_orders | length }}</div>
+  </div>
+</div>
+
+<div class="orders">
+
+  {% if not orders %}
+  <div class="empty">
+    <div class="icon">🏖️</div>
+    No orders yet — waiting for customers to tap!
+  </div>
+
+  {% else %}
+
+  <!-- Active orders first -->
+  {% for order in orders %}
+  {% if order.status != 'delivered' %}
+  <div class="order-card {{ order.status }}">
+    <div class="order-main">
+      <div class="order-top">
+        <div class="order-table">{{ order.table_id }}</div>
+        <span class="status-badge {{ order.status }}">{{ order.status }}</span>
+        <div class="order-time">{{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</div>
+      </div>
+      <div class="order-id">{{ order.id[:8].upper() }}</div>
+
+      <div class="order-items" style="margin-top:10px;">
+        {% for item in order.items %}
+        <div class="order-item">
+          <span class="item-name">{{ item.qty }}x {{ item.name }}</span>
+          <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="order-total">Total: €{{ "%.2f"|format(order.total) }}</div>
+    </div>
+
+    <div class="status-actions">
+      {% if order.status == 'pending' %}
+      <form method="POST" action="/admin/order/{{ order.id }}/status">
+        <input type="hidden" name="status" value="preparing">
+        <button type="submit" class="status-btn btn-preparing">▶ Preparing</button>
+      </form>
+      {% endif %}
+      {% if order.status in ('pending', 'preparing') %}
+      <form method="POST" action="/admin/order/{{ order.id }}/status">
+        <input type="hidden" name="status" value="ready">
+        <button type="submit" class="status-btn btn-ready">✓ Ready</button>
+      </form>
+      {% endif %}
+      {% if order.status in ('pending', 'preparing', 'ready') %}
+      <form method="POST" action="/admin/order/{{ order.id }}/status">
+        <input type="hidden" name="status" value="delivered">
+        <button type="submit" class="status-btn btn-delivered">✓ Delivered</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  <!-- Delivered orders -->
+  {% if delivered_orders %}
+  <div class="orders-title" style="margin-top:20px;">Delivered</div>
+  {% for order in delivered_orders %}
+  <div class="order-card delivered">
+    <div class="order-main">
+      <div class="order-top">
+        <div class="order-table">{{ order.table_id }}</div>
+        <span class="status-badge delivered">delivered</span>
+        <div class="order-time">{{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</div>
+      </div>
+      <div class="order-items" style="margin-top:8px;">
+        {% for item in order.items %}
+        <div class="order-item">
+          <span class="item-name">{{ item.qty }}x {{ item.name }}</span>
+          <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="order-total">€{{ "%.2f"|format(order.total) }}</div>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% endif %}
+</div>
+
+</body>
+</html>

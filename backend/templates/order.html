@@ -3,118 +3,402 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Order</title>
+  <title>Beach Bar Order</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+    :root {
+      --sand:   #F5E6C8;
+      --ocean:  #1A6B7C;
+      --sun:    #F4A825;
+      --coral:  #E8603A;
+      --dark:   #1C2B2D;
+      --light:  #FDFAF4;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #fafafa;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--light);
       min-height: 100vh;
-      padding: 16px;
+      padding-bottom: 120px;
     }
 
+    /* Header */
     .header {
-      background: #f59e0b;
-      color: #fff;
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 20px;
-      text-align: center;
+      background: var(--ocean);
+      padding: 20px 20px 28px;
+      position: relative;
+      overflow: hidden;
     }
-    .header h1 { font-size: 24px; font-weight: 700; }
-    .header p  { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0; right: 0;
+      height: 20px;
+      background: var(--light);
+      border-radius: 20px 20px 0 0;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .table-pill {
+      background: var(--sun);
+      color: var(--dark);
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    .tap-info {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      font-weight: 300;
+    }
 
-    .state-box {
+    /* Error state */
+    .error-box {
+      margin: 24px 20px;
       background: #fff;
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 32px 20px;
       text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     }
-    .state-box .icon { font-size: 48px; margin-bottom: 12px; }
-    .state-box h2    { font-size: 18px; font-weight: 700; color: #dc2626; }
-    .state-box p     { font-size: 14px; color: #666; margin-top: 8px; line-height: 1.5; }
+    .error-box .icon { font-size: 48px; margin-bottom: 12px; }
+    .error-box h2 { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--coral); margin-bottom: 8px; }
+    .error-box p  { font-size: 14px; color: #666; line-height: 1.5; }
 
-    .table-badge {
+    /* Menu */
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ocean);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 20px 20px 10px;
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 0 20px;
+      margin-bottom: 8px;
+    }
+
+    .menu-item {
       background: #fff;
-      border: 2px solid #f59e0b;
-      border-radius: 14px;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+      border: 2px solid transparent;
+    }
+    .menu-item:active { transform: scale(0.97); }
+    .menu-item.selected {
+      border-color: var(--sun);
+      background: #FFFBF0;
+    }
+    .menu-item .emoji { font-size: 32px; margin-bottom: 8px; display: block; }
+    .menu-item .name {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 2px;
+    }
+    .menu-item .price {
+      font-size: 13px;
+      color: var(--ocean);
+      font-weight: 500;
+    }
+    .menu-item .qty-badge {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: var(--sun);
+      color: var(--dark);
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Cart */
+    .cart-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--dark);
       padding: 16px 20px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      z-index: 100;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .table-badge .icon { font-size: 32px; }
-    .table-badge h2   { font-size: 20px; font-weight: 700; color: #1a1a1a; }
-    .table-badge p    { font-size: 13px; color: #888; }
+    .cart-bar.visible { transform: translateY(0); }
+    .cart-info { color: #fff; }
+    .cart-info .cart-count { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .cart-info .cart-total {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--sun);
+    }
+    .order-btn {
+      background: var(--sun);
+      color: var(--dark);
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .order-btn:active { background: var(--coral); color: #fff; }
+    .order-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .session-info {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 12px;
-      color: #166534;
-      margin-bottom: 20px;
+    /* Success */
+    .success-box {
+      margin: 24px 20px;
+      background: var(--ocean);
+      border-radius: 20px;
+      padding: 32px 20px;
+      text-align: center;
+      color: #fff;
+    }
+    .success-box .icon { font-size: 56px; margin-bottom: 16px; }
+    .success-box h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .success-box p { font-size: 14px; opacity: 0.8; line-height: 1.5; }
+    .success-box .order-id {
+      margin-top: 16px;
+      font-size: 11px;
+      opacity: 0.5;
       font-family: monospace;
     }
-
-    .placeholder {
-      background: #fff;
-      border-radius: 14px;
-      padding: 28px 20px;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .placeholder .icon { font-size: 48px; margin-bottom: 12px; }
-    .placeholder h3 { font-size: 16px; font-weight: 600; color: #444; margin-bottom: 8px; }
-    .placeholder p  { font-size: 13px; color: #888; line-height: 1.6; }
   </style>
 </head>
 <body>
 
+{% if error %}
   <div class="header">
-    <h1>🍹 Beach Bar</h1>
-    <p>Tap to order from your table</p>
+    <div class="header-top">
+      <h1>🍹 Beach Bar</h1>
+    </div>
+  </div>
+  <div class="error-box">
+    <div class="icon">❌</div>
+    <h2>{{ error_title }}</h2>
+    <p>{{ error }}</p>
   </div>
 
-  {% if error %}
-    <!-- Error — validation failed in Python -->
-    <div class="state-box">
-      <div class="icon">❌</div>
-      <h2>{{ error_title }}</h2>
-      <p>{{ error }}</p>
+{% else %}
+  <div class="header">
+    <div class="header-top">
+      <h1>🍹 Beach Bar</h1>
+      <span class="table-pill">{{ table_id }}</span>
     </div>
+    <div class="tap-info">Tap #{{ counter }} · Session {{ session_id[:8] }}...</div>
+  </div>
 
-  {% else %}
-    <!-- Success — session validated and consumed in Python -->
-    <div class="table-badge">
-      <div class="icon">🏖️</div>
-      <div>
-        <h2>{{ table_id }}</h2>
-        <p>Session verified ✓</p>
+  <!-- Order success state (hidden initially) -->
+  <div class="success-box" id="successBox" style="display:none;">
+    <div class="icon">🎉</div>
+    <h2>Order placed!</h2>
+    <p>Your drinks are on their way.<br>Sit back and relax.</p>
+    <div class="order-id" id="successOrderId"></div>
+  </div>
+
+  <!-- Menu -->
+  <div id="menuSection">
+
+    <div class="section-title">☕ Hot Drinks</div>
+    <div class="menu-grid">
+      <div class="menu-item" onclick="toggleItem(this)" data-id="espresso" data-name="Espresso" data-price="2.50">
+        <span class="emoji">☕</span>
+        <div class="name">Espresso</div>
+        <div class="price">€2.50</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="cappuccino" data-name="Cappuccino" data-price="3.50">
+        <span class="emoji">🫧</span>
+        <div class="name">Cappuccino</div>
+        <div class="price">€3.50</div>
       </div>
     </div>
 
-    <div class="session-info">
-      Session: {{ session_id }}<br>
-      Tap count: {{ counter if counter is not none else '—' }}
+    <div class="section-title">🍹 Cold Drinks</div>
+    <div class="menu-grid">
+      <div class="menu-item" onclick="toggleItem(this)" data-id="freddo" data-name="Freddo Espresso" data-price="3.50">
+        <span class="emoji">🧊</span>
+        <div class="name">Freddo Espresso</div>
+        <div class="price">€3.50</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="frappe" data-name="Frappé" data-price="3.00">
+        <span class="emoji">🥤</span>
+        <div class="name">Frappé</div>
+        <div class="price">€3.00</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="juice" data-name="Fresh Juice" data-price="4.00">
+        <span class="emoji">🍊</span>
+        <div class="name">Fresh Juice</div>
+        <div class="price">€4.00</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="water" data-name="Water" data-price="1.50">
+        <span class="emoji">💧</span>
+        <div class="name">Water</div>
+        <div class="price">€1.50</div>
+      </div>
     </div>
 
-    <!-- YOUR ORDER UI GOES HERE -->
-    <div class="placeholder">
-      <div class="icon">🍔</div>
-      <h3>Menu coming soon</h3>
-      <p>
-        Session is valid and table is identified.<br>
-        Replace this section with your order UI.
-      </p>
+    <div class="section-title">🍺 Bar</div>
+    <div class="menu-grid">
+      <div class="menu-item" onclick="toggleItem(this)" data-id="beer" data-name="Beer" data-price="4.00">
+        <span class="emoji">🍺</span>
+        <div class="name">Beer</div>
+        <div class="price">€4.00</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="cocktail" data-name="Cocktail" data-price="8.00">
+        <span class="emoji">🍸</span>
+        <div class="name">Cocktail</div>
+        <div class="price">€8.00</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="wine" data-name="Wine" data-price="6.00">
+        <span class="emoji">🍷</span>
+        <div class="name">Wine</div>
+        <div class="price">€6.00</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="shot" data-name="Shot" data-price="3.50">
+        <span class="emoji">🥃</span>
+        <div class="name">Shot</div>
+        <div class="price">€3.50</div>
+      </div>
     </div>
 
-  {% endif %}
+    <div class="section-title">🍟 Snacks</div>
+    <div class="menu-grid">
+      <div class="menu-item" onclick="toggleItem(this)" data-id="fries" data-name="Fries" data-price="4.00">
+        <span class="emoji">🍟</span>
+        <div class="name">Fries</div>
+        <div class="price">€4.00</div>
+      </div>
+      <div class="menu-item" onclick="toggleItem(this)" data-id="sandwich" data-name="Sandwich" data-price="5.50">
+        <span class="emoji">🥪</span>
+        <div class="name">Sandwich</div>
+        <div class="price">€5.50</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Cart bar -->
+  <div class="cart-bar" id="cartBar">
+    <div class="cart-info">
+      <div class="cart-count" id="cartCount">0 items</div>
+      <div class="cart-total" id="cartTotal">€0.00</div>
+    </div>
+    <button class="order-btn" id="orderBtn" onclick="placeOrder()">Order now →</button>
+  </div>
+
+  <script>
+    const SESSION_ID = "{{ session_id }}";
+    const TABLE_ID   = "{{ table_id }}";
+    const cart       = {};
+
+    function toggleItem(el) {
+      const id    = el.dataset.id;
+      const name  = el.dataset.name;
+      const price = parseFloat(el.dataset.price);
+
+      if (cart[id]) {
+        cart[id].qty++;
+      } else {
+        cart[id] = { id, name, price, qty: 1 };
+      }
+
+      el.classList.add("selected");
+      let badge = el.querySelector(".qty-badge");
+      if (!badge) {
+        badge = document.createElement("div");
+        badge.className = "qty-badge";
+        el.appendChild(badge);
+      }
+      badge.textContent = cart[id].qty;
+
+      updateCartBar();
+    }
+
+    function updateCartBar() {
+      const items = Object.values(cart);
+      const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+      const count = items.reduce((s, i) => s + i.qty, 0);
+
+      document.getElementById("cartCount").textContent = count + " item" + (count !== 1 ? "s" : "");
+      document.getElementById("cartTotal").textContent = "€" + total.toFixed(2);
+      document.getElementById("cartBar").classList.toggle("visible", count > 0);
+    }
+
+    async function placeOrder() {
+      const items = Object.values(cart);
+      if (!items.length) return;
+
+      const btn = document.getElementById("orderBtn");
+      btn.disabled = true;
+      btn.textContent = "Sending...";
+
+      try {
+        const res = await fetch("/order", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ items })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          document.getElementById("menuSection").style.display = "none";
+          document.getElementById("cartBar").style.display     = "none";
+          document.getElementById("successBox").style.display  = "block";
+          document.getElementById("successOrderId").textContent = "Order #" + data.orderId.slice(0,8).toUpperCase();
+        } else {
+          btn.disabled = false;
+          btn.textContent = "Order now →";
+          alert(data.error || "Order failed. Please try again.");
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = "Order now →";
+        alert("Network error. Please try again.");
+      }
+    }
+  </script>
+{% endif %}
 
 </body>
 </html>
