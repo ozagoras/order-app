@@ -89,11 +89,11 @@ def create_session_full(uid: str, table_id: str, counter: int, token: str, refre
 
     with _get_conn() as conn:
         with conn.cursor() as cur:
-            # Insert session with both tokens and mark used=TRUE immediately
+            # Insert session with both tokens — used=FALSE, consumed on /order load
             cur.execute(
                 """
                 INSERT INTO sessions (id, uid, table_id, counter, token, refresh_token, used, expires_at)
-                VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, FALSE, %s)
                 """,
                 (session_id, uid.upper(), table_id, counter,
                  token.upper(), refresh_token.upper(), expires_at)
@@ -111,7 +111,7 @@ def create_session_full(uid: str, table_id: str, counter: int, token: str, refre
         "counter":       counter,
         "token":         token.upper(),
         "refresh_token": refresh_token.upper(),
-        "used":          True,
+        "used":          False,
         "expires_at":    expires_at.isoformat(),
     }
 
