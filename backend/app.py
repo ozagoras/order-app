@@ -138,13 +138,13 @@ def order_page():
     # Cookie must be present — proves this is the device that tapped
     # -----------------------------------------------------------------------
     if request.method == "POST":
-        cookie_sid = request.cookies.get(SESSION_COOKIE, "").strip()
-        if not cookie_sid:
+        refresh_token = request.headers.get("X-Refresh-Token", "").strip().upper()
+        if not refresh_token:
             return jsonify({"error": "Unauthorized"}), 401
 
-        sess = get_session(cookie_sid)
+        sess = get_session_by_refresh_token(refresh_token)
         if not sess:
-            return jsonify({"error": "Session not found"}), 404
+            return jsonify({"error": "Session not found or expired"}), 404
 
         body  = request.get_json(silent=True) or {}
         items = body.get("items", [])
@@ -155,16 +155,12 @@ def order_page():
         order = create_order(sess["id"], sess["table_id"], items, total)
 
         # Kill the session immediately after order is placed
-        # This prevents any further use of this token or cookie
         kill_session(sess["id"])
 
         logger.info("Order placed and session killed: table=%s total=%.2f session=%s",
                     sess["table_id"], total, sess["id"])
 
-        # Return response and clear the cookie
-        response = make_response(jsonify({"success": True, "orderId": order["id"]}))
-        response.delete_cookie(SESSION_COOKIE)
-        return response, 200
+        return jsonify({"success": True, "orderId": order["id"]}), 200
 
     # -----------------------------------------------------------------------
     # GET — Show the order page

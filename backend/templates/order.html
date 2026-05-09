@@ -134,13 +134,29 @@
       top: 10px; right: 10px;
       background: var(--sun);
       color: var(--dark);
-      font-family: 'Syne', sans-serif;
+      font-family: "Syne", sans-serif;
       font-size: 12px;
       font-weight: 800;
       width: 24px; height: 24px;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
     }
+    .menu-item .minus-btn {
+      position: absolute;
+      bottom: 10px; right: 10px;
+      background: var(--coral);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: none;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+      border: none;
+      line-height: 1;
+    }
+    .menu-item.selected .minus-btn { display: flex; }
 
     /* Cart */
     .cart-bar {
@@ -249,11 +265,13 @@
         <span class="emoji">☕</span>
         <div class="name">Espresso</div>
         <div class="price">€2.50</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="cappuccino" data-name="Cappuccino" data-price="3.50">
         <span class="emoji">🫧</span>
         <div class="name">Cappuccino</div>
         <div class="price">€3.50</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
     </div>
 
@@ -263,21 +281,25 @@
         <span class="emoji">🧊</span>
         <div class="name">Freddo Espresso</div>
         <div class="price">€3.50</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="frappe" data-name="Frappé" data-price="3.00">
         <span class="emoji">🥤</span>
         <div class="name">Frappé</div>
         <div class="price">€3.00</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="juice" data-name="Fresh Juice" data-price="4.00">
         <span class="emoji">🍊</span>
         <div class="name">Fresh Juice</div>
         <div class="price">€4.00</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="water" data-name="Water" data-price="1.50">
         <span class="emoji">💧</span>
         <div class="name">Water</div>
         <div class="price">€1.50</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
     </div>
 
@@ -287,21 +309,25 @@
         <span class="emoji">🍺</span>
         <div class="name">Beer</div>
         <div class="price">€4.00</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="cocktail" data-name="Cocktail" data-price="8.00">
         <span class="emoji">🍸</span>
         <div class="name">Cocktail</div>
         <div class="price">€8.00</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="wine" data-name="Wine" data-price="6.00">
         <span class="emoji">🍷</span>
         <div class="name">Wine</div>
         <div class="price">€6.00</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="shot" data-name="Shot" data-price="3.50">
         <span class="emoji">🥃</span>
         <div class="name">Shot</div>
         <div class="price">€3.50</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
     </div>
 
@@ -311,11 +337,13 @@
         <span class="emoji">🍟</span>
         <div class="name">Fries</div>
         <div class="price">€4.00</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
       <div class="menu-item" onclick="toggleItem(this)" data-id="sandwich" data-name="Sandwich" data-price="5.50">
         <span class="emoji">🥪</span>
         <div class="name">Sandwich</div>
         <div class="price">€5.50</div>
+        <button class="minus-btn" onclick="removeItem(this, event)">−</button>
       </div>
     </div>
 
@@ -364,6 +392,28 @@
       updateCartBar();
     }
 
+    function removeItem(el, event) {
+      event.stopPropagation(); // prevent toggleItem from firing
+      const id = el.closest(".menu-item").dataset.id;
+
+      if (!cart[id]) return;
+
+      cart[id].qty--;
+
+      const item = el.closest(".menu-item");
+      const badge = item.querySelector(".qty-badge");
+
+      if (cart[id].qty <= 0) {
+        delete cart[id];
+        item.classList.remove("selected");
+        if (badge) badge.remove();
+      } else {
+        badge.textContent = cart[id].qty;
+      }
+
+      updateCartBar();
+    }
+
     function updateCartBar() {
       const items = Object.values(cart);
       const total = items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -383,10 +433,14 @@
       btn.textContent = "Sending...";
 
       try {
+        const storedRefreshToken = sessionStorage.getItem('nfc_refresh_token') || '';
         const res = await fetch("/order", {
           method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ items })
+          headers: {
+            "Content-Type":   "application/json",
+            "X-Refresh-Token": storedRefreshToken
+          },
+          body: JSON.stringify({ items })
         });
         const data = await res.json();
 
