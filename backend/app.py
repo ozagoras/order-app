@@ -87,6 +87,7 @@ def nfc_landing():
             error_title=title,
             table_id=None,
             session_id=None,
+            counter=None,
         )
 
     # 1 — Both parameters must be present
@@ -161,6 +162,7 @@ def order_page():
             error_title=title,
             table_id=None,
             session_id=None,
+            counter=None,
         )
 
     # -----------------------------------------------------------------------
@@ -193,6 +195,7 @@ def order_page():
             error_title=None,
             table_id=session["table_id"],
             session_id=session["id"],
+            counter=session["counter"],
         )
 
     # -----------------------------------------------------------------------
@@ -221,6 +224,7 @@ def order_page():
             error_title=None,
             table_id=session["table_id"],
             session_id=session["id"],
+            counter=session["counter"],
         )
 
     # First time loading — consume session and set cookie
@@ -238,6 +242,7 @@ def order_page():
         error_title=None,
         table_id=session["table_id"],
         session_id=session["id"],
+        counter=session["counter"],
     ))
 
     expires_at = session["expires_at"]

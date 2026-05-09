@@ -100,7 +100,8 @@
     </div>
 
     <div class="session-info">
-      Session: {{ session_id }}
+      Session: {{ session_id }}<br>
+      Tap count: {{ counter if counter is not none else '—' }}
     </div>
 
     <!-- YOUR ORDER UI GOES HERE -->
