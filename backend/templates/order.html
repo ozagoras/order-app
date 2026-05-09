@@ -331,9 +331,15 @@
   </div>
 
   <script>
-    const SESSION_ID = "{{ session_id }}";
-    const TABLE_ID   = "{{ table_id }}";
-    const cart       = {};
+    const SESSION_ID    = "{{ session_id }}";
+    const TABLE_ID      = "{{ table_id }}";
+    const REFRESH_TOKEN = "{{ refresh_token or '' }}";
+    const cart          = {};
+
+    // Store refresh token in sessionStorage — tab-specific, cannot be accessed from other browsers
+    if (REFRESH_TOKEN) {
+      sessionStorage.setItem('nfc_refresh_token', REFRESH_TOKEN);
+    }
 
     function toggleItem(el) {
       const id    = el.dataset.id;
@@ -385,14 +391,13 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          // Hide menu and cart
+          // Clear refresh token — session is dead
+          sessionStorage.removeItem('nfc_refresh_token');
+
           document.getElementById("menuSection").style.display = "none";
           document.getElementById("cartBar").style.display     = "none";
           document.getElementById("successBox").style.display  = "block";
           document.getElementById("successOrderId").textContent = "Order #" + data.orderId.slice(0,8).toUpperCase();
-
-          // Session is now dead server-side and cookie is cleared
-          // If user refreshes they will see session expired
         } else {
           btn.disabled = false;
           btn.textContent = "Order now →";

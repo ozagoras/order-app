@@ -36,10 +36,12 @@ from db import (
     create_session,
     consume_session,
     get_session_by_token,
+    get_session_by_refresh_token,
     get_session,
     kill_session,
     register_tag,
     store_token,
+    store_refresh_token,
     create_order,
     get_all_orders,
     update_order_status,
@@ -167,22 +169,27 @@ def order_page():
     # -----------------------------------------------------------------------
     # GET — Show the order page
     # -----------------------------------------------------------------------
-    cookie_sid = request.cookies.get(SESSION_COOKIE, "").strip()
-    token      = request.args.get("token", "").strip().upper()
+    token         = request.args.get("token", "").strip().upper()
+    refresh_token = request.headers.get("X-Refresh-Token", "").strip().upper()
 
-    logger.info("Order page hit: token=%s cookie=%s",
+    logger.info("Order page hit: token=%s refresh=%s",
                 token[:8] if token else "none",
-                cookie_sid[:8] if cookie_sid else "none")
+                refresh_token[:8] if refresh_token else "none")
 
     def render_error(title, message):
         return render_template("order.html", error=message, error_title=title,
-                               table_id=None, session_id=None, counter=None)
+                               table_id=None, session_id=None, counter=None,
+                               refresh_token=None)
 
-    # Path B — Refresh via cookie
-    if cookie_sid:
-        sess = get_session(cookie_sid)
+    # -----------------------------------------------------------------------
+    # Path B — Refresh: client sends X-Refresh-Token header
+    # This token lives only in sessionStorage — not a cookie, not in URL
+    # Cannot be accessed from another browser tab or device
+    # -----------------------------------------------------------------------
+    if refresh_token and not token:
+        sess = get_session_by_refresh_token(refresh_token)
         if not sess:
-            return render_error("Session not found", "Please tap the NFC tag again.")
+            return render_error("Session expired", "Please tap the NFC tag again.")
 
         expires_at = sess["expires_at"]
         if isinstance(expires_at, str):
@@ -192,12 +199,17 @@ def order_page():
         if datetime.now(timezone.utc) > expires_at:
             return render_error("Session expired", "Please tap the NFC tag again.")
 
-        logger.info("Refresh via cookie: session=%s table=%s", cookie_sid, sess["table_id"])
+        logger.info("Refresh via sessionStorage token: session=%s table=%s",
+                    sess["id"], sess["table_id"])
         return render_template("order.html", error=None, error_title=None,
                                table_id=sess["table_id"], session_id=sess["id"],
-                               counter=sess["counter"])
+                               counter=sess["counter"], refresh_token=refresh_token)
 
-    # Path A — First load via token
+    # -----------------------------------------------------------------------
+    # Path A — First load: token in URL
+    # Consume token, generate refresh_token, return it to client
+    # Client stores refresh_token in sessionStorage only
+    # -----------------------------------------------------------------------
     if not token:
         return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
 
@@ -206,30 +218,26 @@ def order_page():
         return render_error("Invalid or expired token",
                             "This link has already been used or expired. Please tap the NFC tag again.")
 
-    if cookie_sid == sess["id"]:
-        return render_template("order.html", error=None, error_title=None,
-                               table_id=sess["table_id"], session_id=sess["id"],
-                               counter=sess["counter"])
-
     consumed = consume_session(sess["id"])
     if not consumed:
         return render_error("Link already used", "Please tap the NFC tag again.")
 
+    # Generate a refresh token — stored only in browser sessionStorage
+    # Never in URL, never in cookie — inaccessible from other browsers
+    secret        = os.environ.get("SECRET_KEY", "changeme")
+    refresh_token = hmac.new(
+        key=secret.encode(),
+        msg=f"refresh:{sess['id']}:{sess['counter']}".encode(),
+        digestmod=hashlib.sha256
+    ).hexdigest()[:32].upper()
+
+    store_refresh_token(sess["id"], refresh_token)
+
     logger.info("Order page first load: table=%s session=%s", sess["table_id"], sess["id"])
 
-    response = make_response(render_template("order.html", error=None, error_title=None,
-                                             table_id=sess["table_id"], session_id=sess["id"],
-                                             counter=sess["counter"]))
-
-    expires_at = sess["expires_at"]
-    if isinstance(expires_at, str):
-        expires_at = datetime.fromisoformat(expires_at)
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    response.set_cookie(SESSION_COOKIE, value=sess["id"], expires=expires_at,
-                        httponly=True, secure=False, samesite="Lax")
-    return response
+    return render_template("order.html", error=None, error_title=None,
+                           table_id=sess["table_id"], session_id=sess["id"],
+                           counter=sess["counter"], refresh_token=refresh_token)
 
 
 # ===========================================================================

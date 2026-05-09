@@ -101,6 +101,36 @@ def create_session(uid: str, table_id: str, counter: int) -> dict:
     }
 
 
+def store_refresh_token(session_id: str, refresh_token: str) -> None:
+    """Store a refresh token — sent to client for sessionStorage only."""
+    with _get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE sessions SET refresh_token = %s WHERE id = %s",
+                (refresh_token.upper(), session_id)
+            )
+
+
+def get_session_by_refresh_token(refresh_token: str) -> dict | None:
+    """
+    Look up a session by its refresh token.
+    Used when the client sends X-Refresh-Token header on page reload.
+    Only valid if session is not expired.
+    """
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT * FROM sessions
+                WHERE refresh_token = %s
+                  AND expires_at    > %s
+                """,
+                (refresh_token.upper(), datetime.now(timezone.utc))
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+
 def store_token(session_id: str, token: str) -> None:
     with _get_conn() as conn:
         with conn.cursor() as cur:
