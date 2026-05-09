@@ -18,6 +18,7 @@ Admin:
 """
 
 import os
+import uuid
 import hmac
 import hashlib
 import logging
@@ -34,6 +35,7 @@ from db import (
     get_tag,
     update_last_counter,
     create_session,
+    create_session_full,
     consume_session,
     get_session_by_token,
     get_session_by_refresh_token,
@@ -100,11 +102,14 @@ def nfc_landing():
 
     def render_error(title, message):
         return render_template("order.html", error=message, error_title=title,
-                               table_id=None, session_id=None, counter=None)
+                               table_id=None, session_id=None, counter=None,
+                               refresh_token=None)
 
+    # 1 — Parameters must be present
     if not uid or not ctr:
         return render_error("Invalid link", "This page must be opened by tapping an NFC tag.")
 
+    # 2 — Single DB call: get tag + validate in one query
     tag = get_tag(uid)
     if not tag:
         return render_error("Tag not registered", "Complete setup in /nfc-writer first.")
@@ -114,20 +119,29 @@ def nfc_landing():
     except ValueError:
         return render_error("Invalid link", "Malformed counter value.")
 
-    last_counter = tag.get("last_counter", 0)
-    if incoming_counter <= last_counter:
-        logger.warning("Replay detected uid=%s incoming=%d last=%d", uid, incoming_counter, last_counter)
+    # 3 — Replay protection
+    if incoming_counter <= tag.get("last_counter", 0):
+        logger.warning("Replay detected uid=%s incoming=%d last=%d",
+                       uid, incoming_counter, tag["last_counter"])
         return render_error("Link already used", "Please tap the NFC tag again.")
 
-    table_id    = tag["table_id"]
-    new_session = create_session(uid, table_id, incoming_counter)
-    token       = generate_token(uid, ctr, new_session["id"])
+    # 4 — Generate all tokens in Python (no DB needed yet)
+    table_id      = tag["table_id"]
+    session_id    = str(uuid.uuid4())
+    token         = generate_token(uid, ctr, session_id)
+    secret        = os.environ.get("SECRET_KEY", "changeme")
+    refresh_token = hmac.new(
+        key=secret.encode(),
+        msg=f"refresh:{session_id}:{incoming_counter}".encode(),
+        digestmod=hashlib.sha256
+    ).hexdigest()[:32].upper()
 
-    store_token(new_session["id"], token)
-    update_last_counter(uid, incoming_counter)
+    # 5 — Single DB transaction: insert session + update counter
+    create_session_full(uid, table_id, incoming_counter, token, refresh_token)
 
-    logger.info("Valid tap: uid=%s table=%s ctr=%d token=%s", uid, table_id, incoming_counter, token)
+    logger.info("Valid tap: uid=%s table=%s ctr=%d", uid, table_id, incoming_counter)
 
+    # 6 — Redirect to /order — uid and ctr never appear in browser history
     return redirect(f"/order?token={token}")
 
 

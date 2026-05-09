@@ -79,6 +79,43 @@ def register_tag(uid: str, table_id: str) -> dict:
 # sessions
 # ---------------------------------------------------------------------------
 
+def create_session_full(uid: str, table_id: str, counter: int, token: str, refresh_token: str) -> dict:
+    """
+    Create session and store both tokens in a single DB transaction.
+    Faster than calling create_session + store_token + store_refresh_token separately.
+    """
+    session_id = str(uuid.uuid4())
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+
+    with _get_conn() as conn:
+        with conn.cursor() as cur:
+            # Insert session with both tokens and mark used=TRUE immediately
+            cur.execute(
+                """
+                INSERT INTO sessions (id, uid, table_id, counter, token, refresh_token, used, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s)
+                """,
+                (session_id, uid.upper(), table_id, counter,
+                 token.upper(), refresh_token.upper(), expires_at)
+            )
+            # Update last_counter in same transaction
+            cur.execute(
+                "UPDATE nfc_tags SET last_counter = %s WHERE uid = %s",
+                (counter, uid.upper())
+            )
+
+    return {
+        "id":            session_id,
+        "uid":           uid.upper(),
+        "table_id":      table_id,
+        "counter":       counter,
+        "token":         token.upper(),
+        "refresh_token": refresh_token.upper(),
+        "used":          True,
+        "expires_at":    expires_at.isoformat(),
+    }
+
+
 def create_session(uid: str, table_id: str, counter: int) -> dict:
     session_id = str(uuid.uuid4())
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)

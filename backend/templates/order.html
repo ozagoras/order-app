@@ -525,6 +525,14 @@
           // Clear refresh token — session is dead
           sessionStorage.removeItem('nfc_refresh_token');
 
+          // Lock payment buttons so method cannot be changed after ordering
+          document.getElementById('payCash').disabled = true;
+          document.getElementById('payCard').disabled = true;
+          document.getElementById('payCash').style.opacity = '0.5';
+          document.getElementById('payCard').style.opacity = '0.5';
+          document.getElementById('payCash').style.cursor  = 'not-allowed';
+          document.getElementById('payCard').style.cursor  = 'not-allowed';
+
           document.getElementById("menuSection").style.display = "none";
           document.getElementById("cartBar").style.display     = "none";
           document.getElementById("successBox").style.display  = "block";
