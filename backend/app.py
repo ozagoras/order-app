@@ -263,8 +263,43 @@ def admin_logout():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    orders = get_all_orders()
-    return render_template("admin.html", orders=orders)
+    raw_orders = get_all_orders()
+
+    # Prepare data in Python — avoid complex Jinja2 filters
+    orders = []
+    for o in raw_orders:
+        # Format time safely
+        created_at = o.get("created_at")
+        if created_at and hasattr(created_at, "strftime"):
+            time_str = created_at.strftime("%H:%M")
+        elif isinstance(created_at, str):
+            time_str = created_at[11:16]
+        else:
+            time_str = ""
+
+        orders.append({
+            "id":         str(o["id"]),
+            "short_id":   str(o["id"])[:8].upper(),
+            "table_id":   o["table_id"],
+            "items":      o["order_items"],
+            "status":     o["status"],
+            "total":      float(o["total"]),
+            "time_str":   time_str,
+        })
+
+    pending_count   = sum(1 for o in orders if o["status"] == "pending")
+    preparing_count = sum(1 for o in orders if o["status"] == "preparing")
+    ready_count     = sum(1 for o in orders if o["status"] == "ready")
+    delivered_count = sum(1 for o in orders if o["status"] == "delivered")
+
+    return render_template(
+        "admin.html",
+        orders=orders,
+        pending_count=pending_count,
+        preparing_count=preparing_count,
+        ready_count=ready_count,
+        delivered_count=delivered_count,
+    )
 
 
 @app.route("/admin/order/<order_id>/status", methods=["POST"])

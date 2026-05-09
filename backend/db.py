@@ -206,12 +206,18 @@ def get_all_orders() -> list:
             rows = cur.fetchall()
             result = []
             for r in rows:
-                row = dict(r)
-                # items comes back as a list already from JSONB
-                if isinstance(row.get("items"), str):
-                    row["items"] = json.loads(row["items"])
-                # ensure total is float
-                row["total"] = float(row["total"])
+                # Convert RealDictRow to plain dict first to avoid
+                # conflict with Python's built-in dict.items() method
+                row = {
+                    "id":         r["id"],
+                    "session_id": r["session_id"],
+                    "table_id":   r["table_id"],
+                    "order_items": r["items"] if isinstance(r["items"], list) else json.loads(r["items"]) if r["items"] else [],
+                    "status":     r["status"],
+                    "total":      float(r["total"]),
+                    "created_at": r["created_at"],
+                    "updated_at": r["updated_at"],
+                }
                 result.append(row)
             return result
 
