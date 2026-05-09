@@ -37,6 +37,7 @@ from db import (
     consume_session,
     get_session_by_token,
     get_session,
+    kill_session,
     register_tag,
     store_token,
     create_order,
@@ -143,15 +144,25 @@ def order_page():
         if not sess:
             return jsonify({"error": "Session not found"}), 404
 
-        body     = request.get_json(silent=True) or {}
-        items    = body.get("items", [])
+        body  = request.get_json(silent=True) or {}
+        items = body.get("items", [])
         if not items:
             return jsonify({"error": "No items in order"}), 400
 
         total = sum(item.get("price", 0) * item.get("qty", 1) for item in items)
         order = create_order(sess["id"], sess["table_id"], items, total)
-        logger.info("Order placed: table=%s total=%.2f", sess["table_id"], total)
-        return jsonify({"success": True, "orderId": order["id"]}), 200
+
+        # Kill the session immediately after order is placed
+        # This prevents any further use of this token or cookie
+        kill_session(sess["id"])
+
+        logger.info("Order placed and session killed: table=%s total=%.2f session=%s",
+                    sess["table_id"], total, sess["id"])
+
+        # Return response and clear the cookie
+        response = make_response(jsonify({"success": True, "orderId": order["id"]}))
+        response.delete_cookie(SESSION_COOKIE)
+        return response, 200
 
     # -----------------------------------------------------------------------
     # GET — Show the order page

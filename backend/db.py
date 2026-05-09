@@ -134,6 +134,23 @@ def get_session(session_id: str) -> dict | None:
             return dict(row) if row else None
 
 
+def kill_session(session_id: str) -> None:
+    """
+    Immediately kill a session after order is placed.
+    Sets used=TRUE and expires_at=NOW() so it can never be used again.
+    """
+    with _get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE sessions
+                SET used = TRUE, expires_at = NOW()
+                WHERE id = %s
+                """,
+                (session_id,)
+            )
+
+
 def consume_session(session_id: str) -> dict | None:
     now = datetime.now(timezone.utc)
     with _get_conn() as conn:
@@ -180,13 +197,23 @@ def get_all_orders() -> list:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT * FROM orders
+                SELECT id, session_id, table_id, items, status, total, created_at, updated_at
+                FROM orders
                 ORDER BY created_at DESC
                 LIMIT 100
                 """
             )
             rows = cur.fetchall()
-            return [dict(r) for r in rows]
+            result = []
+            for r in rows:
+                row = dict(r)
+                # items comes back as a list already from JSONB
+                if isinstance(row.get("items"), str):
+                    row["items"] = json.loads(row["items"])
+                # ensure total is float
+                row["total"] = float(row["total"])
+                result.append(row)
+            return result
 
 
 def get_orders_by_status(status: str) -> list:

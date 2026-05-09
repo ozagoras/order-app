@@ -234,6 +234,9 @@
     <div class="icon">🎉</div>
     <h2>Order placed!</h2>
     <p>Your drinks are on their way.<br>Sit back and relax.</p>
+    <p style="margin-top:12px; font-size:12px; opacity:0.5;">
+      Tap the NFC tag again to place a new order.
+    </p>
     <div class="order-id" id="successOrderId"></div>
   </div>
 
@@ -382,10 +385,14 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
+          // Hide menu and cart
           document.getElementById("menuSection").style.display = "none";
           document.getElementById("cartBar").style.display     = "none";
           document.getElementById("successBox").style.display  = "block";
           document.getElementById("successOrderId").textContent = "Order #" + data.orderId.slice(0,8).toUpperCase();
+
+          // Session is now dead server-side and cookie is cleared
+          // If user refreshes they will see session expired
         } else {
           btn.disabled = false;
           btn.textContent = "Order now →";
