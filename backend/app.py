@@ -151,8 +151,9 @@ def order_page():
         if not items:
             return jsonify({"error": "No items in order"}), 400
 
-        total = sum(item.get("price", 0) * item.get("qty", 1) for item in items)
-        order = create_order(sess["id"], sess["table_id"], items, total)
+        total   = sum(item.get("price", 0) * item.get("qty", 1) for item in items)
+        payment = body.get("payment", "cash").strip()
+        order   = create_order(sess["id"], sess["table_id"], items, total, payment)
 
         # Kill the session immediately after order is placed
         kill_session(sess["id"])
@@ -288,6 +289,7 @@ def admin_dashboard():
             "order_items": o["order_items"],
             "status":      o["status"],
             "total":       float(o["total"]),
+            "payment":     o.get("payment", "cash"),
             "time_str":    time_str,
         })
 

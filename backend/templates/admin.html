@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin — Beach Bar</title>
-  <meta http-equiv="refresh" content="30">
+  <meta http-equiv="refresh" content="5">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
     :root {
@@ -114,7 +114,7 @@
 
 <div class="page-header">
   <h1>Orders</h1>
-  <div class="refresh-note">Auto-refreshes every 30s</div>
+  <div class="refresh-note">Auto-refreshes every 5s</div>
 </div>
 
 <!-- Stats — calculated in Python and passed to template -->
@@ -155,6 +155,7 @@
       <div class="order-top">
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge {{ order.status }}">{{ order.status }}</span>
+        <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
         <div class="order-time">{{ order.time_str }}</div>
       </div>
       <div class="order-id">{{ order.short_id }}</div>
@@ -204,6 +205,7 @@
       <div class="order-top">
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge delivered">delivered</span>
+        <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
         <div class="order-time">{{ order.time_str }}</div>
       </div>
       {% for item in order.order_items %}

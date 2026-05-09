@@ -201,16 +201,16 @@ def consume_session(session_id: str) -> dict | None:
 # orders
 # ---------------------------------------------------------------------------
 
-def create_order(session_id: str, table_id: str, items: list, total: float) -> dict:
+def create_order(session_id: str, table_id: str, items: list, total: float, payment: str = "cash") -> dict:
     order_id = str(uuid.uuid4())
     with _get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO orders (id, session_id, table_id, items, status, total)
-                VALUES (%s, %s, %s, %s, 'pending', %s)
+                INSERT INTO orders (id, session_id, table_id, items, status, total, payment)
+                VALUES (%s, %s, %s, %s, 'pending', %s, %s)
                 """,
-                (order_id, session_id, table_id, json.dumps(items), total)
+                (order_id, session_id, table_id, json.dumps(items), total, payment)
             )
     return {
         "id":         order_id,
@@ -219,6 +219,7 @@ def create_order(session_id: str, table_id: str, items: list, total: float) -> d
         "items":      items,
         "status":     "pending",
         "total":      total,
+        "payment":    payment,
     }
 
 
@@ -227,7 +228,7 @@ def get_all_orders() -> list:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, session_id, table_id, items, status, total, created_at, updated_at
+                SELECT id, session_id, table_id, items, status, total, payment, created_at, updated_at
                 FROM orders
                 ORDER BY created_at DESC
                 LIMIT 100
@@ -245,6 +246,7 @@ def get_all_orders() -> list:
                     "order_items": r["items"] if isinstance(r["items"], list) else json.loads(r["items"]) if r["items"] else [],
                     "status":     r["status"],
                     "total":      float(r["total"]),
+                    "payment":    r.get("payment", "cash"),
                     "created_at": r["created_at"],
                     "updated_at": r["updated_at"],
                 }
