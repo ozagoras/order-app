@@ -304,7 +304,7 @@
       <h1>🍹 Beach Bar</h1>
       <span class="table-pill">{{ table_id }}</span>
     </div>
-    <div class="tap-info">Tap #{{ counter }} · Session {{ session_id[:8] }}...</div>
+
     <div class="timer-bar">
       <div class="timer-fill" id="timerFill"></div>
     </div>
@@ -444,69 +444,48 @@
     const cart          = {};
     let   paymentMethod = null;
 
-    // Store refresh token in sessionStorage — tab-specific, cannot be accessed from other browsers
+    // -----------------------------------------------------------------------
+    // Session management
+    // refresh_token lives ONLY in sessionStorage — never in URL, never in cookie
+    // sessionStorage is tab-specific — another browser/device has no access
+    // -----------------------------------------------------------------------
+
     if (REFRESH_TOKEN) {
+      // First load — store token and clean the URL
       sessionStorage.setItem('nfc_refresh_token', REFRESH_TOKEN);
-      // Store in URL hash — survives browser refresh, never sent to server
-      history.replaceState(null, '', '#' + REFRESH_TOKEN);
+      history.replaceState(null, '', '/order');
     }
 
-    // On any page load, check if we have a refresh token in hash or sessionStorage
-    // and use it to validate — handles mobile pull-to-refresh
-    window.addEventListener('load', async () => {
-      const hashToken = window.location.hash.slice(1);
-      const storedToken = sessionStorage.getItem('nfc_refresh_token') || hashToken;
-
-      if (storedToken && !REFRESH_TOKEN) {
-        // Page was refreshed — token not in Jinja template — validate via fetch
-        try {
-          const res = await fetch('/order', {
-            headers: { 'X-Refresh-Token': storedToken }
-          });
-          if (res.ok) {
-            const html = await res.text();
-            document.open();
-            document.write(html);
-            document.close();
-            history.replaceState(null, '', '#' + storedToken);
-          }
-        } catch (e) {}
+    // Soft reload via fetch — sends X-Refresh-Token header
+    // Used instead of real browser refresh to keep session alive
+    async function softReload() {
+      const rt = sessionStorage.getItem('nfc_refresh_token');
+      if (!rt) {
+        // No token — session is dead or was never set
+        location.href = '/order'; // natural reload → server shows invalid
+        return;
       }
-    });
-
-    // Intercept browser refresh (F5 / pull-to-refresh)
-    // A real page reload sends no X-Refresh-Token header and fails
-    // Instead we do a soft reload via fetch using the stored token
-    window.addEventListener('beforeunload', () => {});
-
-    // Soft reload — fetches the page via JS with X-Refresh-Token header
-    // This is the only way to refresh without losing the session
-    // Works on desktop (F5/Cmd+R) and is triggered on mobile pull-to-refresh detection
-    async function softReload(token) {
-      const rt = token || sessionStorage.getItem('nfc_refresh_token');
-      if (!rt) return;
-
       try {
-        const res = await fetch('/order', {
-          headers: { 'X-Refresh-Token': rt }
-        });
-        if (res.ok) {
-          const html = await res.text();
-          document.open();
-          document.write(html);
-          document.close();
-          // Keep URL clean — no token visible
-          history.replaceState(null, '', '/order');
-        } else {
-          // Session expired or invalid — show error naturally
-          document.open();
-          document.write(await res.text());
-          document.close();
-        }
+        const res  = await fetch('/order', { headers: { 'X-Refresh-Token': rt } });
+        const html = await res.text();
+        document.open();
+        document.write(html);
+        document.close();
+        history.replaceState(null, '', '/order');
       } catch (e) {}
     }
 
-    // Intercept keyboard refresh (F5, Ctrl+R, Cmd+R) on desktop
+    // On page load — if REFRESH_TOKEN is empty, we were refreshed
+    // Use sessionStorage token to restore the page
+    if (!REFRESH_TOKEN) {
+      const stored = sessionStorage.getItem('nfc_refresh_token');
+      if (stored) {
+        softReload(); // restore session via fetch
+      }
+      // If no stored token → page renders error state from server (session dead)
+    }
+
+    // Intercept desktop refresh (F5 / Ctrl+R / Cmd+R)
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
         e.preventDefault();
@@ -514,21 +493,8 @@
       }
     });
 
-    // Detect mobile pull-to-refresh via scroll position
-    // When user pulls down past the top, intercept with softReload
-    let startY = 0;
-    document.addEventListener('touchstart', (e) => {
-      startY = e.touches[0].clientY;
-    }, { passive: true });
-
-    document.addEventListener('touchmove', (e) => {
-      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-      const pullDistance = e.touches[0].clientY - startY;
-      if (scrollTop === 0 && pullDistance > 80) {
-        // User is pulling down at top of page — this would normally trigger refresh
-        // We can't prevent it reliably, but the load event handler will catch it
-      }
-    }, { passive: true });
+    // Intercept mobile pull-to-refresh
+    // We can't prevent it fully, but the !REFRESH_TOKEN check above handles the reload
 
     function selectPayment(method) {
       paymentMethod = method;
@@ -631,8 +597,8 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
-          // Clear refresh token — session is dead
-          sessionStorage.removeItem('nfc_refresh_token');
+          // Clear sessionStorage — session is dead, page becomes inaccessible
+          sessionStorage.clear();
 
           // Lock payment buttons so method cannot be changed after ordering
           document.getElementById('payCash').disabled = true;
