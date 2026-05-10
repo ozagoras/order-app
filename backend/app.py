@@ -56,6 +56,11 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "changeme")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
+# SESSION_PERMANENT = False means cookie dies when browser closes
+# The user must log in fresh every time they open the browser
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -293,8 +298,9 @@ def admin_login():
 
         user = get_admin_user(username)
         if user and bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
-            session["admin_logged_in"] = True
-            session["admin_username"]  = username
+            session.permanent = False  # cookie dies when browser closes
+            session["admin_logged_in"]  = True
+            session["admin_username"]   = username
             session["admin_login_time"] = datetime.now(timezone.utc).timestamp()
             return redirect(url_for("admin_dashboard"))
         else:
