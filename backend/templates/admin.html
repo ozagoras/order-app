@@ -201,6 +201,10 @@
         <input type="hidden" name="status" value="delivered">
         <button type="submit" class="status-btn btn-delivered">✓ Delivered</button>
       </form>
+      <form method="POST" action="/admin/order/{{ order.id }}/status">
+        <input type="hidden" name="status" value="cancelled">
+        <button type="submit" class="status-btn btn-cancelled">✕ Cancel</button>
+      </form>
     </div>
   </div>
   {% endif %}
