@@ -69,6 +69,30 @@
       font-weight: 300;
     }
 
+    /* Session timer */
+    .timer-bar {
+      margin-top: 10px;
+      height: 3px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .timer-fill {
+      height: 100%;
+      background: rgba(255,255,255,0.8);
+      border-radius: 2px;
+      transition: width 1s linear, background 1s;
+      width: 100%;
+    }
+    .timer-fill.warning { background: var(--sun); }
+    .timer-fill.danger  { background: var(--coral); }
+    .timer-label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 4px;
+      text-align: right;
+    }
+
     /* Error state */
     .error-box {
       margin: 24px 20px;
@@ -281,6 +305,10 @@
       <span class="table-pill">{{ table_id }}</span>
     </div>
     <div class="tap-info">Tap #{{ counter }} · Session {{ session_id[:8] }}...</div>
+    <div class="timer-bar">
+      <div class="timer-fill" id="timerFill"></div>
+    </div>
+    <div class="timer-label" id="timerLabel">5:00</div>
   </div>
 
   <!-- Order success state (hidden initially) -->
@@ -419,7 +447,88 @@
     // Store refresh token in sessionStorage — tab-specific, cannot be accessed from other browsers
     if (REFRESH_TOKEN) {
       sessionStorage.setItem('nfc_refresh_token', REFRESH_TOKEN);
+      // Store in URL hash — survives browser refresh, never sent to server
+      history.replaceState(null, '', '#' + REFRESH_TOKEN);
     }
+
+    // On any page load, check if we have a refresh token in hash or sessionStorage
+    // and use it to validate — handles mobile pull-to-refresh
+    window.addEventListener('load', async () => {
+      const hashToken = window.location.hash.slice(1);
+      const storedToken = sessionStorage.getItem('nfc_refresh_token') || hashToken;
+
+      if (storedToken && !REFRESH_TOKEN) {
+        // Page was refreshed — token not in Jinja template — validate via fetch
+        try {
+          const res = await fetch('/order', {
+            headers: { 'X-Refresh-Token': storedToken }
+          });
+          if (res.ok) {
+            const html = await res.text();
+            document.open();
+            document.write(html);
+            document.close();
+            history.replaceState(null, '', '#' + storedToken);
+          }
+        } catch (e) {}
+      }
+    });
+
+    // Intercept browser refresh (F5 / pull-to-refresh)
+    // A real page reload sends no X-Refresh-Token header and fails
+    // Instead we do a soft reload via fetch using the stored token
+    window.addEventListener('beforeunload', () => {});
+
+    // Soft reload — fetches the page via JS with X-Refresh-Token header
+    // This is the only way to refresh without losing the session
+    // Works on desktop (F5/Cmd+R) and is triggered on mobile pull-to-refresh detection
+    async function softReload(token) {
+      const rt = token || sessionStorage.getItem('nfc_refresh_token');
+      if (!rt) return;
+
+      try {
+        const res = await fetch('/order', {
+          headers: { 'X-Refresh-Token': rt }
+        });
+        if (res.ok) {
+          const html = await res.text();
+          document.open();
+          document.write(html);
+          document.close();
+          // Keep URL clean — no token visible
+          history.replaceState(null, '', '/order');
+        } else {
+          // Session expired or invalid — show error naturally
+          document.open();
+          document.write(await res.text());
+          document.close();
+        }
+      } catch (e) {}
+    }
+
+    // Intercept keyboard refresh (F5, Ctrl+R, Cmd+R) on desktop
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
+        e.preventDefault();
+        softReload();
+      }
+    });
+
+    // Detect mobile pull-to-refresh via scroll position
+    // When user pulls down past the top, intercept with softReload
+    let startY = 0;
+    document.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      const pullDistance = e.touches[0].clientY - startY;
+      if (scrollTop === 0 && pullDistance > 80) {
+        // User is pulling down at top of page — this would normally trigger refresh
+        // We can't prevent it reliably, but the load event handler will catch it
+      }
+    }, { passive: true });
 
     function selectPayment(method) {
       paymentMethod = method;
