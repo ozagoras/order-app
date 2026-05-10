@@ -87,11 +87,28 @@ def generate_token(uid: str, ctr: str, session_id: str) -> str:
 # Admin auth decorator
 # ---------------------------------------------------------------------------
 
+# Admin session absolute expiry — 8 hours after login regardless of activity
+ADMIN_SESSION_HOURS = 8
+
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("admin_logged_in"):
             return redirect(url_for("admin_login"))
+
+        # Absolute expiry — session dies 8 hours after login
+        # Not reset by activity — browser open or not, session expires
+        login_time = session.get("admin_login_time")
+        if not login_time:
+            session.clear()
+            return redirect(url_for("admin_login"))
+
+        elapsed = datetime.now(timezone.utc).timestamp() - login_time
+        if elapsed > ADMIN_SESSION_HOURS * 3600:
+            session.clear()
+            logger.info("Admin session expired after %d hours", ADMIN_SESSION_HOURS)
+            return redirect(url_for("admin_login"))
+
         return f(*args, **kwargs)
     return decorated
 
@@ -278,6 +295,7 @@ def admin_login():
         if user and bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
             session["admin_logged_in"] = True
             session["admin_username"]  = username
+            session["admin_login_time"] = datetime.now(timezone.utc).timestamp()
             return redirect(url_for("admin_dashboard"))
         else:
             error = "Invalid username or password"
