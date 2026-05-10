@@ -46,7 +46,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 12px;
       padding: 0 24px 20px;
     }
@@ -78,7 +78,8 @@
     .order-card.pending   { border-left: 4px solid var(--sun); }
     .order-card.preparing { border-left: 4px solid var(--ocean); }
     .order-card.ready     { border-left: 4px solid #22c55e; }
-    .order-card.delivered { border-left: 4px solid #d1d5db; opacity: 0.6; }
+    .order-card.delivered  { border-left: 4px solid #d1d5db; opacity: 0.6; }
+    .order-card.cancelled  { border-left: 4px solid #ef4444; opacity: 0.6; }
 
     .order-main { flex: 1; min-width: 0; }
     .order-top  { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
@@ -90,7 +91,8 @@
     .status-badge.pending   { background: #FEF3C7; color: #92400E; }
     .status-badge.preparing { background: #DBEAFE; color: #1E40AF; }
     .status-badge.ready     { background: #D1FAE5; color: #065F46; }
-    .status-badge.delivered { background: #F3F4F6; color: #6B7280; }
+    .status-badge.delivered  { background: #F3F4F6; color: #6B7280; }
+    .status-badge.cancelled  { background: #FEE2E2; color: #991B1B; }
 
     .order-item { display: flex; justify-content: space-between; font-size: 13px; color: #444; padding: 2px 0; }
     .order-item .item-name  { color: var(--dark); font-weight: 500; }
@@ -107,6 +109,7 @@
     .btn-preparing { background: #DBEAFE; color: #1E40AF; }
     .btn-ready     { background: #D1FAE5; color: #065F46; }
     .btn-delivered { background: #F3F4F6; color: #6B7280; }
+    .btn-cancelled { background: #FEE2E2; color: #991B1B; }
 
     .empty { text-align: center; padding: 60px 20px; color: #aaa; font-size: 15px; }
     .empty .icon { font-size: 48px; margin-bottom: 12px; }
@@ -142,6 +145,10 @@
     <div class="label">Delivered</div>
     <div class="value" style="color:#9ca3af">{{ delivered_count }}</div>
   </div>
+  <div class="stat">
+    <div class="label">Cancelled</div>
+    <div class="value" style="color:#ef4444">{{ cancelled_count }}</div>
+  </div>
 </div>
 
 <div class="orders">
@@ -156,7 +163,7 @@
 
   <!-- Active orders -->
   {% for order in orders %}
-  {% if order.status != 'delivered' %}
+  {% if order.status not in ['delivered', 'cancelled'] %}
   <div class="order-card {{ order.status }}">
     <div class="order-main">
       <div class="order-top">
@@ -212,6 +219,35 @@
       <div class="order-top">
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge delivered">delivered</span>
+        <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
+        <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
+      </div>
+      {% for item in order.order_items %}
+      <div class="order-item">
+        <span class="item-name">{{ item.qty }}x {{ item.name }}</span>
+        <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
+      </div>
+      {% endfor %}
+      <div class="order-total">€{{ "%.2f"|format(order.total) }}</div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  <!-- Cancelled orders -->
+  {% set has_cancelled = [] %}
+  {% for order in orders %}{% if order.status == 'cancelled' %}{% set _ = has_cancelled.append(1) %}{% endif %}{% endfor %}
+
+  {% if has_cancelled %}
+  <div class="section-label" style="color:#991B1B;">Cancelled</div>
+  {% for order in orders %}
+  {% if order.status == 'cancelled' %}
+  <div class="order-card cancelled">
+    <div class="order-main">
+      <div class="order-top">
+        <div class="order-table">{{ order.table_id }}</div>
+        <span class="status-badge cancelled">cancelled</span>
         <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
         <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
       </div>

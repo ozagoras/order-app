@@ -356,6 +356,7 @@ def admin_dashboard():
     preparing_count = sum(1 for o in orders if o["status"] == "preparing")
     ready_count     = sum(1 for o in orders if o["status"] == "ready")
     delivered_count = sum(1 for o in orders if o["status"] == "delivered")
+    cancelled_count = sum(1 for o in orders if o["status"] == "cancelled")
 
     return render_template(
         "admin.html",
@@ -364,6 +365,7 @@ def admin_dashboard():
         preparing_count=preparing_count,
         ready_count=ready_count,
         delivered_count=delivered_count,
+        cancelled_count=cancelled_count,
     )
 
 
@@ -371,7 +373,7 @@ def admin_dashboard():
 @admin_required
 def update_status(order_id):
     status = request.form.get("status", "").strip()
-    if status not in ("pending", "preparing", "ready", "delivered"):
+    if status not in ("pending", "preparing", "ready", "delivered", "cancelled"):
         return jsonify({"error": "Invalid status"}), 400
 
     update_order_status(order_id, status)
