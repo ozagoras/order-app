@@ -69,29 +69,7 @@
       font-weight: 300;
     }
 
-    /* Session timer */
-    .timer-bar {
-      margin-top: 10px;
-      height: 3px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    .timer-fill {
-      height: 100%;
-      background: rgba(255,255,255,0.8);
-      border-radius: 2px;
-      transition: width 1s linear, background 1s;
-      width: 100%;
-    }
-    .timer-fill.warning { background: var(--sun); }
-    .timer-fill.danger  { background: var(--coral); }
-    .timer-label {
-      font-size: 10px;
-      color: rgba(255,255,255,0.5);
-      margin-top: 4px;
-      text-align: right;
-    }
+
 
     /* Error state */
     .error-box {
@@ -304,11 +282,7 @@
       <h1>🍹 Beach Bar</h1>
       <span class="table-pill">{{ table_id }}</span>
     </div>
-
-    <div class="timer-bar">
-      <div class="timer-fill" id="timerFill"></div>
-    </div>
-    <div class="timer-label" id="timerLabel">5:00</div>
+    <div class="tap-info">Tap #{{ counter }}</div>
   </div>
 
   <!-- Order success state (hidden initially) -->
