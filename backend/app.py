@@ -332,6 +332,15 @@ def admin_dashboard():
         else:
             time_str = ""
 
+        # Pass raw ISO timestamp — browser JS will convert to local time
+        created_at = o.get("created_at")
+        if created_at and hasattr(created_at, "isoformat"):
+            iso_time = created_at.isoformat()
+        elif isinstance(created_at, str):
+            iso_time = created_at
+        else:
+            iso_time = ""
+
         orders.append({
             "id":          str(o["id"]),
             "short_id":    str(o["id"])[:8].upper(),
@@ -340,7 +349,7 @@ def admin_dashboard():
             "status":      o["status"],
             "total":       float(o["total"]),
             "payment":     o.get("payment", "cash"),
-            "time_str":    time_str,
+            "iso_time":    iso_time,
         })
 
     pending_count   = sum(1 for o in orders if o["status"] == "pending")
