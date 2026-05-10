@@ -27,6 +27,8 @@ from functools import wraps
 from flask import (Flask, request, jsonify, render_template,
                    redirect, make_response, session, url_for)
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 
 import bcrypt
@@ -59,6 +61,14 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 CORS(app, origins=[BASE_URL])
+
+# Rate limiter — protects admin login from brute force
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],          # no global limit — only apply where needed
+    storage_uri="memory://"     # in-memory storage, resets on restart
+)
 
 SESSION_COOKIE = "nfc_session"
 
@@ -256,6 +266,8 @@ def order_page():
 # ===========================================================================
 
 @app.route("/admin/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+@limiter.limit("10 per hour")
 def admin_login():
     error = None
     if request.method == "POST":
@@ -365,6 +377,11 @@ def health():
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Route not found"}), 404
+
+@app.errorhandler(429)
+def rate_limit_exceeded(e):
+    return render_template("admin_login.html",
+                           error="Too many attempts. Please wait and try again."), 429
 
 @app.errorhandler(405)
 def method_not_allowed(e):
