@@ -58,8 +58,8 @@ def fetch_menu() -> list[dict]:
             row = {k.strip().lstrip('\ufeff'): v.strip() for k, v in row.items() if k}
 
             item_id   = row.get("id", "").strip()
-            name_en   = row.get("name_en", "").strip()
-            name_gr   = row.get("name_gr", "").strip()
+            name_en   = (row.get("name_en") or row.get("name") or "").strip()
+            name_gr   = (row.get("name_gr") or "").strip()
             price_str = row.get("price", "0").strip().replace(",", ".")
             category  = row.get("category", "").strip().lower()
             available = row.get("available", "yes").strip().lower() in ("yes", "true", "1", "y")
