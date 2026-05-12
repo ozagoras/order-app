@@ -37,6 +37,14 @@ def _get_conn():
 # nfc_tags
 # ---------------------------------------------------------------------------
 
+def get_all_tags() -> list:
+    """Return all registered NFC tags — used for waiter table selector."""
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT uid, table_id FROM nfc_tags ORDER BY table_id")
+            return [dict(r) for r in cur.fetchall()]
+
+
 def get_tag(uid: str) -> dict | None:
     with _get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -238,16 +246,16 @@ def consume_session(session_id: str) -> dict | None:
 # orders
 # ---------------------------------------------------------------------------
 
-def create_order(session_id: str, table_id: str, items: list, total: float, payment: str = "cash") -> dict:
+def create_order(session_id: str, table_id: str, items: list, total: float, payment: str = "cash", source: str = "customer") -> dict:
     order_id = str(uuid.uuid4())
     with _get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO orders (id, session_id, table_id, items, status, total, payment)
-                VALUES (%s, %s, %s, %s, 'pending', %s, %s)
+                INSERT INTO orders (id, session_id, table_id, items, status, total, payment, source)
+                VALUES (%s, %s, %s, %s, 'pending', %s, %s, %s)
                 """,
-                (order_id, session_id, table_id, json.dumps(items), total, payment)
+                (order_id, session_id, table_id, json.dumps(items), total, payment, source)
             )
     return {
         "id":         order_id,
@@ -257,6 +265,7 @@ def create_order(session_id: str, table_id: str, items: list, total: float, paym
         "status":     "pending",
         "total":      total,
         "payment":    payment,
+        "source":     source,
     }
 
 
@@ -265,7 +274,7 @@ def get_all_orders() -> list:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, session_id, table_id, items, status, total, payment, created_at, updated_at
+                SELECT id, session_id, table_id, items, status, total, payment, source, created_at, updated_at
                 FROM orders
                 ORDER BY created_at DESC
                 LIMIT 100
@@ -284,6 +293,7 @@ def get_all_orders() -> list:
                     "status":     r["status"],
                     "total":      float(r["total"]),
                     "payment":    r.get("payment", "cash"),
+                    "source":     r.get("source", "customer"),
                     "created_at": r["created_at"],
                     "updated_at": r["updated_at"],
                 }

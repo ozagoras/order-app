@@ -170,6 +170,7 @@
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge {{ order.status }}">{{ order.status }}</span>
         <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
+        {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 Waiter</span>{% endif %}
         <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
       </div>
       <div class="order-id">{{ order.short_id }}</div>
@@ -224,6 +225,7 @@
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge delivered">delivered</span>
         <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
+        {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 Waiter</span>{% endif %}
         <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
       </div>
       <div class="order-id">{{ order.short_id }}</div>
@@ -254,6 +256,7 @@
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge cancelled">cancelled</span>
         <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
+        {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 Waiter</span>{% endif %}
         <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
       </div>
       <div class="order-id">{{ order.short_id }}</div>

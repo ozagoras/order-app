@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Waiter Order</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+    :root {
+      --ocean: #1A6B7C;
+      --sun:   #F4A825;
+      --coral: #E8603A;
+      --dark:  #1C2B2D;
+      --light: #FDFAF4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--light); min-height: 100vh; padding-bottom: 140px; }
+
+    .header {
+      background: var(--ocean);
+      padding: 16px 20px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 20px;
+      background: var(--light);
+      border-radius: 20px 20px 0 0;
+    }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .header h1 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: #fff; }
+    .logout-btn {
+      font-size: 12px; color: rgba(255,255,255,0.6);
+      text-decoration: none; padding: 4px 10px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+    }
+
+    /* Table selector */
+    .table-selector {
+      padding: 16px 16px 0;
+    }
+    .table-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .table-select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      color: var(--dark);
+      background: #fff;
+      outline: none;
+      appearance: none;
+      cursor: pointer;
+    }
+    .table-select:focus { border-color: var(--ocean); }
+
+    /* Language toggle */
+    .header-bottom { display: flex; justify-content: space-between; align-items: center; }
+    .waiter-badge { font-size: 11px; color: rgba(255,255,255,0.6); }
+    .lang-toggle { display: flex; gap: 4px; background: rgba(0,0,0,0.2); border-radius: 20px; padding: 3px; }
+    .lang-btn { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 16px; border: none; cursor: pointer; background: transparent; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; transition: all 0.2s; }
+    .lang-btn.active { background: #fff; color: var(--ocean); }
+
+    /* Category blocks */
+    .cat-block { margin: 16px 16px 0; border-radius: 16px; overflow: hidden; }
+    .cat-espresso  { background: #7B3F2A; }
+    .cat-cold      { background: #2A5C6E; }
+    .cat-noncoffee { background: #4A6741; }
+    .cat-drinks    { background: #2A5C6E; }
+    .cat-bar       { background: #4A2A6E; }
+    .cat-snacks    { background: #8B5E3C; }
+
+    .cat-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 1.5px; padding: 14px 16px 10px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .cat-items { padding: 4px 0 8px; }
+    .cat-item { display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .cat-item:last-child { border-bottom: none; }
+    .cat-item:active { background: rgba(0,0,0,0.15); }
+    .cat-item.selected { background: rgba(0,0,0,0.2); }
+    .cat-item.unavailable { opacity: 0.45; cursor: not-allowed; }
+    .item-name { flex: 1; font-size: 14px; color: rgba(255,255,255,0.92); font-weight: 400; }
+    .item-price { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); margin-right: 12px; }
+    .item-controls { display: flex; align-items: center; gap: 8px; }
+    .item-minus, .item-plus { width: 26px; height: 26px; border-radius: 50%; border: none; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; line-height: 1; }
+    .item-plus  { background: rgba(255,255,255,0.9); color: var(--dark); }
+    .item-minus { background: rgba(255,255,255,0.25); color: #fff; }
+    .item-minus:active, .item-plus:active { transform: scale(0.9); }
+    .item-qty { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800; color: #fff; min-width: 18px; text-align: center; }
+    .unavailable-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); font-style: italic; white-space: nowrap; }
+
+    /* Payment */
+    .payment-section { padding: 0 16px 12px; display: none; margin-top: 16px; }
+    .payment-section.visible { display: block; }
+    .payment-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+    .payment-options { display: flex; gap: 10px; }
+    .payment-btn { flex: 1; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; background: #fff; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #888; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .payment-btn.selected { border-color: var(--ocean); color: var(--ocean); background: #EBF5F7; }
+    .pay-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+
+    /* Cart */
+    .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--dark); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 100; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .cart-bar.visible { transform: translateY(0); }
+    .cart-info { color: #fff; }
+    .cart-info .cart-count { font-size: 12px; color: rgba(255,255,255,0.5); }
+    .cart-info .cart-total { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--sun); }
+    .order-btn { background: var(--sun); color: var(--dark); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; padding: 14px 28px; border: none; border-radius: 50px; cursor: pointer; white-space: nowrap; }
+    .order-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Success */
+    .success-box { margin: 24px 16px; background: var(--ocean); border-radius: 20px; padding: 32px 20px; text-align: center; color: #fff; display: none; }
+    .success-box .icon { font-size: 56px; margin-bottom: 16px; }
+    .success-box h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .success-box p { font-size: 14px; opacity: 0.8; }
+    .new-order-btn { margin-top: 20px; padding: 12px 24px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: 50px; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <h1>👨‍🍳 Waiter Portal</h1>
+    <a href="/waiter/logout" class="logout-btn">Sign out</a>
+  </div>
+  <div class="header-bottom">
+    <div class="waiter-badge">{{ username }}</div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="btnGr" onclick="setLang('gr')">ΕΛ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Table selector -->
+<div class="table-selector">
+  <div class="table-label" id="tableLabel">Select Table</div>
+  <select class="table-select" id="tableSelect">
+    <option value="">— Select table —</option>
+    {% for tag in tags %}
+    <option value="{{ tag.table_id }}">{{ tag.table_id }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Success box -->
+<div class="success-box" id="successBox">
+  <div class="icon">🎉</div>
+  <h2 id="successTitle">Order placed!</h2>
+  <p id="successMsg">Order sent to kitchen.</p>
+  <button class="new-order-btn" onclick="resetOrder()">New Order</button>
+</div>
+
+<!-- Menu -->
+<div id="menuSection">
+  {% if menu %}
+    {% for cat in menu %}
+    <div class="cat-block {{ cat.color }}">
+      <div class="cat-title" data-en="{{ cat.en }}" data-gr="{{ cat.gr }}">{{ cat.en }}</div>
+      <div class="cat-items">
+        {% for item in cat.products %}
+        <div class="cat-item {% if not item.available %}unavailable{% endif %}"
+             data-id="{{ item.id }}"
+             data-name="{{ item.name_en }}"
+             data-name-gr="{{ item.name_gr }}"
+             data-price="{{ item.price }}"
+             data-available="{{ 'yes' if item.available else 'no' }}"
+             onclick="handleItemClick(this)">
+          <span class="item-name">{{ item.name_en }}</span>
+          <span class="item-price">€{{ "%.2f"|format(item.price) }}</span>
+          {% if item.available %}
+          <div class="item-controls">
+            <button class="item-minus" onclick="removeItem(this, event)">−</button>
+            <span class="item-qty" style="display:none;">0</span>
+            <button class="item-plus" onclick="addItem(this, event)">+</button>
+          </div>
+          {% else %}
+          <span class="unavailable-label" id="unavail-{{ item.id }}">Unavailable</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="padding:40px 20px; text-align:center; color:#888;">Menu unavailable.</div>
+  {% endif %}
+</div>
+
+<!-- Payment -->
+<div class="payment-section" id="paymentSection">
+  <div class="payment-title">Payment method</div>
+  <div class="payment-options">
+    <button class="payment-btn" id="payCash" onclick="selectPayment('cash')">
+      <span class="pay-icon">💵</span>Cash
+    </button>
+    <button class="payment-btn" id="payCard" onclick="selectPayment('card')">
+      <span class="pay-icon">💳</span>Card
+    </button>
+  </div>
+</div>
+
+<!-- Cart -->
+<div class="cart-bar" id="cartBar">
+  <div class="cart-info">
+    <div class="cart-count" id="cartCount">0 items</div>
+    <div class="cart-total" id="cartTotal">€0.00</div>
+  </div>
+  <button class="order-btn" id="orderBtn" onclick="placeOrder()">Order now →</button>
+</div>
+
+<script>
+  const cart = {};
+  let paymentMethod = null;
+  let currentLang   = localStorage.getItem('lang') || 'en';
+
+  const i18n = {
+    en: { tableLabel: 'Select Table', payTitle: 'Payment method', cash: 'Cash', card: 'Card', orderBtn: 'Order now →', item: 'item', items: 'items', unavailable: 'Unavailable', successTitle: 'Order placed!', successMsg: 'Order sent to kitchen.', selectTable: '— Select table —', sending: 'Sending...' },
+    gr: { tableLabel: 'Επιλογή Τραπεζιού', payTitle: 'Τρόπος πληρωμής', cash: 'Μετρητά', card: 'Κάρτα', orderBtn: 'Παραγγελία →', item: 'προϊόν', items: 'προϊόντα', unavailable: 'Μη διαθέσιμο', successTitle: 'Η παραγγελία στάλθηκε!', successMsg: 'Η παραγγελία στάλθηκε στην κουζίνα.', selectTable: '— Επιλογή τραπεζιού —', sending: 'Αποστολή...' }
+  };
+
+  function setLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('lang', lang);
+    const t = i18n[lang];
+    document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+    document.getElementById('btnGr').classList.toggle('active', lang === 'gr');
+    document.getElementById('tableLabel').textContent = t.tableLabel;
+    document.querySelector('.payment-title').textContent = t.payTitle;
+    document.getElementById('payCash').childNodes[document.getElementById('payCash').childNodes.length-1].textContent = t.cash;
+    document.getElementById('payCard').childNodes[document.getElementById('payCard').childNodes.length-1].textContent = t.card;
+    const btn = document.getElementById('orderBtn');
+    if (btn && !btn.disabled) btn.textContent = t.orderBtn;
+    document.querySelectorAll('.cat-title[data-en]').forEach(el => { el.textContent = el.dataset[lang]; });
+    document.querySelectorAll('.cat-item').forEach(el => {
+      const nameEl = el.querySelector('.item-name');
+      if (nameEl) nameEl.textContent = lang === 'gr' ? (el.dataset.nameGr || el.dataset.name) : el.dataset.name;
+    });
+    document.querySelectorAll('.unavailable-label').forEach(el => { el.textContent = t.unavailable; });
+    const count = Object.values(cart).reduce((s, i) => s + i.qty, 0);
+    if (count > 0) document.getElementById('cartCount').textContent = count + ' ' + (count !== 1 ? t.items : t.item);
+  }
+
+  if (currentLang === 'gr') setLang('gr');
+
+  function handleItemClick(el) {
+    if (el.dataset.available === 'no') return;
+    toggleItem(el);
+  }
+
+  function toggleItem(el) {
+    addItem(el.querySelector('.item-plus'), { stopPropagation: () => {} });
+  }
+
+  function addItem(btn, event) {
+    event.stopPropagation();
+    const row = btn.closest('.cat-item');
+    const id = row.dataset.id, name = row.dataset.name, price = parseFloat(row.dataset.price);
+    if (!cart[id]) cart[id] = { id, name, price, qty: 0 };
+    cart[id].qty++;
+    row.classList.add('selected');
+    const qtyEl = row.querySelector('.item-qty');
+    qtyEl.textContent = cart[id].qty;
+    qtyEl.style.display = 'block';
+    updateCartBar();
+  }
+
+  function removeItem(btn, event) {
+    event.stopPropagation();
+    const row = btn.closest('.cat-item');
+    const id = row.dataset.id;
+    if (!cart[id] || cart[id].qty === 0) return;
+    cart[id].qty--;
+    const qtyEl = row.querySelector('.item-qty');
+    if (cart[id].qty <= 0) {
+      delete cart[id];
+      row.classList.remove('selected');
+      qtyEl.textContent = '0';
+      qtyEl.style.display = 'none';
+    } else {
+      qtyEl.textContent = cart[id].qty;
+    }
+    updateCartBar();
+  }
+
+  function selectPayment(method) {
+    paymentMethod = method;
+    document.getElementById('payCash').classList.toggle('selected', method === 'cash');
+    document.getElementById('payCard').classList.toggle('selected', method === 'card');
+  }
+
+  function updateCartBar() {
+    const items = Object.values(cart);
+    const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const count = items.reduce((s, i) => s + i.qty, 0);
+    const t = i18n[currentLang];
+    document.getElementById('cartCount').textContent = count + ' ' + (count !== 1 ? t.items : t.item);
+    document.getElementById('cartTotal').textContent = '€' + total.toFixed(2);
+    document.getElementById('cartBar').classList.toggle('visible', count > 0);
+    document.getElementById('paymentSection').classList.toggle('visible', count > 0);
+    if (count === 0) { paymentMethod = null; document.getElementById('payCash').classList.remove('selected'); document.getElementById('payCard').classList.remove('selected'); }
+  }
+
+  async function placeOrder() {
+    const tableId = document.getElementById('tableSelect').value;
+    if (!tableId) { alert(currentLang === 'gr' ? 'Επιλέξτε τραπέζι' : 'Please select a table'); return; }
+    const items = Object.values(cart);
+    if (!items.length) return;
+    if (!paymentMethod) {
+      const ps = document.getElementById('paymentSection');
+      ps.style.transition = 'transform 0.1s';
+      ps.style.transform = 'translateX(8px)';
+      setTimeout(() => { ps.style.transform = 'translateX(-8px)'; }, 100);
+      setTimeout(() => { ps.style.transform = 'translateX(4px)'; }, 200);
+      setTimeout(() => { ps.style.transform = 'translateX(0)'; }, 300);
+      return;
+    }
+    const btn = document.getElementById('orderBtn');
+    btn.disabled = true;
+    btn.textContent = i18n[currentLang].sending;
+
+    try {
+      const res  = await fetch('/waiter/order', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tableId, items, payment: paymentMethod })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        document.getElementById('menuSection').style.display = 'none';
+        document.getElementById('cartBar').style.display = 'none';
+        document.getElementById('paymentSection').style.display = 'none';
+        const sb = document.getElementById('successBox');
+        sb.style.display = 'block';
+        document.getElementById('successTitle').textContent = i18n[currentLang].successTitle;
+        document.getElementById('successMsg').textContent   = i18n[currentLang].successMsg;
+      } else {
+        btn.disabled = false;
+        btn.textContent = i18n[currentLang].orderBtn;
+        alert(data.error || 'Order failed');
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = i18n[currentLang].orderBtn;
+      alert('Network error');
+    }
+  }
+
+  function resetOrder() {
+    // Reset everything for new order
+    Object.keys(cart).forEach(k => delete cart[k]);
+    document.querySelectorAll('.cat-item.selected').forEach(el => {
+      el.classList.remove('selected');
+      const q = el.querySelector('.item-qty');
+      if (q) { q.textContent = '0'; q.style.display = 'none'; }
+    });
+    paymentMethod = null;
+    document.getElementById('payCash').classList.remove('selected');
+    document.getElementById('payCard').classList.remove('selected');
+    document.getElementById('tableSelect').value = '';
+    document.getElementById('menuSection').style.display = 'block';
+    document.getElementById('successBox').style.display = 'none';
+    document.getElementById('orderBtn').disabled = false;
+    document.getElementById('orderBtn').textContent = i18n[currentLang].orderBtn;
+    updateCartBar();
+  }
+</script>
+
+</body>
+</html>

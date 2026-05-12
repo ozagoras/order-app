@@ -49,6 +49,7 @@ from db import (
     store_refresh_token,
     create_order,
     get_all_orders,
+    get_all_tags,
     update_order_status,
     get_admin_user,
 )
@@ -356,6 +357,7 @@ def admin_dashboard():
             "status":      o["status"],
             "total":       float(o["total"]),
             "payment":     o.get("payment", "cash"),
+            "source":      o.get("source", "customer"),
             "iso_time":    iso_time,
         })
 
@@ -385,6 +387,89 @@ def update_status(order_id):
 
     update_order_status(order_id, status)
     return redirect(url_for("admin_dashboard"))
+
+
+# ===========================================================================
+# WAITER ROUTES
+# ===========================================================================
+
+WAITER_SESSION_KEY = "waiter_logged_in"
+
+def waiter_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get(WAITER_SESSION_KEY):
+            return redirect(url_for("waiter_login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/waiter/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+@limiter.limit("10 per hour")
+def waiter_login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        user = get_admin_user(username)
+        if user and bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+            session.permanent = False
+            session[WAITER_SESSION_KEY] = True
+            session["waiter_username"]  = username
+            return redirect(url_for("waiter_order"))
+        else:
+            error = "Invalid username or password"
+    return render_template("waiter_login.html", error=error)
+
+
+@app.route("/waiter/logout")
+def waiter_logout():
+    session.pop(WAITER_SESSION_KEY, None)
+    session.pop("waiter_username", None)
+    return redirect(url_for("waiter_login"))
+
+
+@app.route("/waiter")
+@waiter_required
+def waiter_order():
+    menu = fetch_menu()
+    tags = get_all_tags()
+    return render_template(
+        "waiter_order.html",
+        menu=menu,
+        tags=tags,
+        username=session.get("waiter_username", "Waiter"),
+    )
+
+
+@app.route("/waiter/order", methods=["POST"])
+@waiter_required
+def waiter_place_order():
+    body     = request.get_json(silent=True) or {}
+    table_id = body.get("tableId", "").strip()
+    items    = body.get("items",   [])
+    payment  = body.get("payment", "cash").strip()
+
+    if not table_id:
+        return jsonify({"error": "Missing tableId"}), 400
+    if not items:
+        return jsonify({"error": "No items in order"}), 400
+
+    total = sum(item.get("price", 0) * item.get("qty", 1) for item in items)
+    order = create_order(
+        session_id=f"waiter-{session.get('waiter_username', 'staff')}",
+        table_id=table_id,
+        items=items,
+        total=total,
+        payment=payment,
+        source="waiter",
+    )
+
+    logger.info("Waiter order: table=%s total=%.2f by=%s",
+                table_id, total, session.get("waiter_username"))
+
+    return jsonify({"success": True, "orderId": order["id"]}), 200
 
 
 # ===========================================================================
