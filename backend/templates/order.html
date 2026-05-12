@@ -352,7 +352,7 @@
       <div class="cat-block {{ cat.color }}">
         <div class="cat-title" data-en="{{ cat.en }}" data-gr="{{ cat.gr }}">{{ cat.en }}</div>
         <div class="cat-items">
-          {% for item in cat.items %}
+          {% for item in cat.products %}
           <div class="cat-item {% if not item.available %}unavailable{% endif %}"
                data-id="{{ item.id }}"
                data-name="{{ item.name_en }}"

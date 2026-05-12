@@ -67,6 +67,10 @@ def fetch_menu() -> list[dict]:
             if not item_id or not name_en or not category:
                 continue
 
+            # Skip if this looks like a header row
+            if item_id.lower() == 'id' or category.lower() == 'category':
+                continue
+
             try:
                 price = float(price_str)
             except ValueError:
@@ -93,7 +97,7 @@ def fetch_menu() -> list[dict]:
                     "en":    cat_info["en"],
                     "gr":    cat_info["gr"],
                     "color": cat_info["color"],
-                    "items": items,
+                    "products": items,
                 })
 
         # Unknown categories
@@ -105,7 +109,7 @@ def fetch_menu() -> list[dict]:
                     "en":    cat_id.capitalize(),
                     "gr":    cat_id.capitalize(),
                     "color": "cat-espresso",
-                    "items": items,
+                    "products": items,
                 })
 
         logger.info("Menu ready: %d categories, %d items", len(menu), count)
