@@ -358,6 +358,7 @@ def admin_dashboard():
             "total":       float(o["total"]),
             "payment":     o.get("payment", "cash"),
             "source":      o.get("source", "customer"),
+            "waiter_name": o.get("waiter_name") or "",
             "iso_time":    iso_time,
         })
 
@@ -457,17 +458,18 @@ def waiter_place_order():
         return jsonify({"error": "No items in order"}), 400
 
     total = sum(item.get("price", 0) * item.get("qty", 1) for item in items)
+    waiter = session.get("waiter_username", "staff")
     order = create_order(
-        session_id=f"waiter-{session.get('waiter_username', 'staff')}",
+        session_id=str(uuid.uuid4()),
         table_id=table_id,
         items=items,
         total=total,
         payment=payment,
         source="waiter",
+        waiter_name=waiter,
     )
 
-    logger.info("Waiter order: table=%s total=%.2f by=%s",
-                table_id, total, session.get("waiter_username"))
+    logger.info("Waiter order: table=%s total=%.2f by=%s", table_id, total, waiter)
 
     return jsonify({"success": True, "orderId": order["id"]}), 200
 

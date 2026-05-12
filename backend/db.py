@@ -246,26 +246,27 @@ def consume_session(session_id: str) -> dict | None:
 # orders
 # ---------------------------------------------------------------------------
 
-def create_order(session_id: str, table_id: str, items: list, total: float, payment: str = "cash", source: str = "customer") -> dict:
+def create_order(session_id: str, table_id: str, items: list, total: float, payment: str = "cash", source: str = "customer", waiter_name: str = None) -> dict:
     order_id = str(uuid.uuid4())
     with _get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO orders (id, session_id, table_id, items, status, total, payment, source)
-                VALUES (%s, %s, %s, %s, 'pending', %s, %s, %s)
+                INSERT INTO orders (id, session_id, table_id, items, status, total, payment, source, waiter_name)
+                VALUES (%s, %s, %s, %s, 'pending', %s, %s, %s, %s)
                 """,
-                (order_id, session_id, table_id, json.dumps(items), total, payment, source)
+                (order_id, session_id, table_id, json.dumps(items), total, payment, source, waiter_name)
             )
     return {
-        "id":         order_id,
-        "session_id": session_id,
-        "table_id":   table_id,
-        "items":      items,
-        "status":     "pending",
-        "total":      total,
-        "payment":    payment,
-        "source":     source,
+        "id":          order_id,
+        "session_id":  session_id,
+        "table_id":    table_id,
+        "items":       items,
+        "status":      "pending",
+        "total":       total,
+        "payment":     payment,
+        "source":      source,
+        "waiter_name": waiter_name,
     }
 
 
@@ -274,7 +275,7 @@ def get_all_orders() -> list:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, session_id, table_id, items, status, total, payment, source, created_at, updated_at
+                SELECT id, session_id, table_id, items, status, total, payment, source, waiter_name, created_at, updated_at
                 FROM orders
                 ORDER BY created_at DESC
                 LIMIT 100
@@ -286,16 +287,17 @@ def get_all_orders() -> list:
                 # Convert RealDictRow to plain dict first to avoid
                 # conflict with Python's built-in dict.items() method
                 row = {
-                    "id":         r["id"],
-                    "session_id": r["session_id"],
-                    "table_id":   r["table_id"],
+                    "id":          r["id"],
+                    "session_id":  r["session_id"],
+                    "table_id":    r["table_id"],
                     "order_items": r["items"] if isinstance(r["items"], list) else json.loads(r["items"]) if r["items"] else [],
-                    "status":     r["status"],
-                    "total":      float(r["total"]),
-                    "payment":    r.get("payment", "cash"),
-                    "source":     r.get("source", "customer"),
-                    "created_at": r["created_at"],
-                    "updated_at": r["updated_at"],
+                    "status":      r["status"],
+                    "total":       float(r["total"]),
+                    "payment":     r.get("payment", "cash"),
+                    "source":      r.get("source", "customer"),
+                    "waiter_name": r.get("waiter_name") or "",
+                    "created_at":  r["created_at"],
+                    "updated_at":  r["updated_at"],
                 }
                 result.append(row)
             return result
