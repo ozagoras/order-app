@@ -30,6 +30,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+from menu import fetch_menu
 
 import bcrypt
 
@@ -135,7 +136,7 @@ def nfc_landing():
     def render_error(title, message):
         return render_template("order.html", error=message, error_title=title,
                                table_id=None, session_id=None, counter=None,
-                               refresh_token=None)
+                               refresh_token=None, menu=[])
 
     # 1 — Parameters must be present
     if not uid or not ctr:
@@ -222,7 +223,7 @@ def order_page():
     def render_error(title, message):
         return render_template("order.html", error=message, error_title=title,
                                table_id=None, session_id=None, counter=None,
-                               refresh_token=None)
+                               refresh_token=None, menu=[])
 
     # -----------------------------------------------------------------------
     # Path B — Refresh: client sends X-Refresh-Token header
@@ -244,9 +245,11 @@ def order_page():
 
         logger.info("Refresh via sessionStorage token: session=%s table=%s",
                     sess["id"], sess["table_id"])
+        menu = fetch_menu()
         return render_template("order.html", error=None, error_title=None,
                                table_id=sess["table_id"], session_id=sess["id"],
-                               counter=sess["counter"], refresh_token=refresh_token)
+                               counter=sess["counter"], refresh_token=refresh_token,
+                               menu=menu)
 
     # -----------------------------------------------------------------------
     # Path A — First load: token in URL
@@ -265,6 +268,9 @@ def order_page():
     if not consumed:
         return render_error("Link already used", "Please tap the NFC tag again.")
 
+    # Fetch menu fresh from Google Sheet on every tap
+    menu = fetch_menu()
+
     # Generate a refresh token — stored only in browser sessionStorage
     # Never in URL, never in cookie — inaccessible from other browsers
     secret        = os.environ.get("SECRET_KEY", "changeme")
@@ -280,7 +286,8 @@ def order_page():
 
     return render_template("order.html", error=None, error_title=None,
                            table_id=sess["table_id"], session_id=sess["id"],
-                           counter=sess["counter"], refresh_token=refresh_token)
+                           counter=sess["counter"], refresh_token=refresh_token,
+                           menu=menu)
 
 
 # ===========================================================================

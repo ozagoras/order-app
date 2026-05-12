@@ -69,6 +69,31 @@
       font-weight: 300;
     }
 
+    /* Language toggle */
+    .lang-toggle {
+      display: flex;
+      gap: 4px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 20px;
+      padding: 3px;
+    }
+    .lang-btn {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 16px;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      font-family: 'Syne', sans-serif;
+      transition: all 0.2s;
+    }
+    .lang-btn.active {
+      background: #fff;
+      color: var(--ocean);
+    }
+
 
 
     /* Error state */
@@ -93,6 +118,8 @@
     .cat-espresso  { background: #7B3F2A; }
     .cat-cold      { background: #2A5C6E; }
     .cat-noncoffee { background: #4A6741; }
+    .cat-drinks    { background: #2A5C6E; }
+    .cat-bar       { background: #4A2A6E; }
     .cat-snacks    { background: #8B5E3C; }
 
     .cat-title {
@@ -161,6 +188,19 @@
       color: #fff;
       min-width: 18px;
       text-align: center;
+    }
+
+    /* Unavailable items */
+    .cat-item.unavailable {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .unavailable-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      font-style: italic;
+      white-space: nowrap;
     }
 
     /* Cart */
@@ -285,222 +325,62 @@
       <h1>🍹 Beach Bar</h1>
       <span class="table-pill">{{ table_id }}</span>
     </div>
-    <div class="tap-info">Tap #{{ counter }}</div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="tap-info" id="tapInfo">Tap #{{ counter }}</div>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" id="btnGr" onclick="setLang('gr')">ΕΛ</button>
+      </div>
+    </div>
   </div>
 
   <!-- Order success state (hidden initially) -->
   <div class="success-box" id="successBox" style="display:none;">
     <div class="icon">🎉</div>
-    <h2>Order placed!</h2>
-    <p>Your drinks are on their way.<br>Sit back and relax.</p>
-    <p style="margin-top:12px; font-size:12px; opacity:0.5;">
+    <h2 id="successTitle">Order placed!</h2>
+    <p id="successMsg">Your drinks are on their way.<br>Sit back and relax.</p>
+    <p style="margin-top:12px; font-size:12px; opacity:0.5;" id="successHint">
       Tap the NFC tag again to place a new order.
     </p>
     <div class="order-id" id="successOrderId"></div>
   </div>
 
-  <!-- Menu -->
+  <!-- Menu — dynamic from Google Sheet -->
   <div id="menuSection">
-
-    <!-- Espresso-Based -->
-    <div class="cat-block cat-espresso">
-      <div class="cat-title">☕ Espresso-Based</div>
-      <div class="cat-items">
-        <div class="cat-item" onclick="toggleItem(this)" data-id="espresso" data-name="Espresso" data-price="2.50">
-          <span class="item-name">Espresso</span>
-          <span class="item-price">€2.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
+    {% if menu %}
+      {% for cat in menu %}
+      <div class="cat-block {{ cat.color }}">
+        <div class="cat-title" data-en="{{ cat.en }}" data-gr="{{ cat.gr }}">{{ cat.en }}</div>
+        <div class="cat-items">
+          {% for item in cat.items %}
+          <div class="cat-item {% if not item.available %}unavailable{% endif %}"
+               data-id="{{ item.id }}"
+               data-name="{{ item.name_en }}"
+               data-name-gr="{{ item.name_gr }}"
+               data-price="{{ item.price }}"
+               data-available="{{ 'yes' if item.available else 'no' }}"
+               onclick="handleItemClick(this)">
+            <span class="item-name">{{ item.name_en }}</span>
+            <span class="item-price">€{{ "%.2f"|format(item.price) }}</span>
+            {% if item.available %}
+            <div class="item-controls">
+              <button class="item-minus" onclick="removeItem(this, event)">−</button>
+              <span class="item-qty" style="display:none;">0</span>
+              <button class="item-plus" onclick="addItem(this, event)">+</button>
+            </div>
+            {% else %}
+            <span class="unavailable-label" id="unavail-label-{{ item.id }}">Unavailable</span>
+            {% endif %}
           </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="double_espresso" data-name="Double Espresso" data-price="3.00">
-          <span class="item-name">Double Espresso</span>
-          <span class="item-price">€3.00</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="cappuccino" data-name="Cappuccino" data-price="3.50">
-          <span class="item-name">Cappuccino</span>
-          <span class="item-price">€3.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="flat_white" data-name="Flat White" data-price="3.50">
-          <span class="item-name">Flat White</span>
-          <span class="item-price">€3.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="latte" data-name="Caffè Latte" data-price="4.00">
-          <span class="item-name">Caffè Latte</span>
-          <span class="item-price">€4.00</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="macchiato" data-name="Macchiato" data-price="3.00">
-          <span class="item-name">Macchiato</span>
-          <span class="item-price">€3.00</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
+          {% endfor %}
         </div>
       </div>
-    </div>
-
-    <!-- Cold Coffee -->
-    <div class="cat-block cat-cold">
-      <div class="cat-title">🧊 Cold Coffee</div>
-      <div class="cat-items">
-        <div class="cat-item" onclick="toggleItem(this)" data-id="freddo_espresso" data-name="Freddo Espresso" data-price="3.50">
-          <span class="item-name">Freddo Espresso</span>
-          <span class="item-price">€3.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="freddo_cappuccino" data-name="Freddo Cappuccino" data-price="3.50">
-          <span class="item-name">Freddo Cappuccino</span>
-          <span class="item-price">€3.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="frappe" data-name="Frappé" data-price="3.00">
-          <span class="item-name">Frappé</span>
-          <span class="item-price">€3.00</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="cold_brew" data-name="Cold Brew" data-price="4.00">
-          <span class="item-name">Cold Brew</span>
-          <span class="item-price">€4.00</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="iced_latte" data-name="Iced Latte" data-price="4.50">
-          <span class="item-name">Iced Latte</span>
-          <span class="item-price">€4.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
+      {% endfor %}
+    {% else %}
+      <div style="padding:40px 20px; text-align:center; color:#888;">
+        Menu unavailable. Please ask a staff member.
       </div>
-    </div>
-
-    <!-- Non-Coffee -->
-    <div class="cat-block cat-noncoffee">
-      <div class="cat-title">🍵 Non-Coffee</div>
-      <div class="cat-items">
-        <div class="cat-item" onclick="toggleItem(this)" data-id="hot_choc" data-name="Hot Chocolate" data-price="3.50">
-          <span class="item-name">Hot Chocolate</span>
-          <span class="item-price">€3.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="matcha" data-name="Matcha Latte" data-price="4.50">
-          <span class="item-name">Matcha Latte</span>
-          <span class="item-price">€4.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="juice" data-name="Fresh Juice" data-price="4.00">
-          <span class="item-name">Fresh Juice</span>
-          <span class="item-price">€4.00</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="water" data-name="Water" data-price="1.50">
-          <span class="item-name">Water</span>
-          <span class="item-price">€1.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Snacks -->
-    <div class="cat-block cat-snacks">
-      <div class="cat-title">🥐 Snacks</div>
-      <div class="cat-items">
-        <div class="cat-item" onclick="toggleItem(this)" data-id="croissant" data-name="Croissant" data-price="2.50">
-          <span class="item-name">Croissant</span>
-          <span class="item-price">€2.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="muffin" data-name="Muffin" data-price="2.50">
-          <span class="item-name">Muffin</span>
-          <span class="item-price">€2.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="sandwich" data-name="Sandwich" data-price="5.50">
-          <span class="item-name">Sandwich</span>
-          <span class="item-price">€5.50</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-        <div class="cat-item" onclick="toggleItem(this)" data-id="cookie" data-name="Cookie" data-price="1.80">
-          <span class="item-name">Cookie</span>
-          <span class="item-price">€1.80</span>
-          <div class="item-controls">
-            <button class="item-minus" onclick="removeItem(this, event)">−</button>
-            <span class="item-qty" style="display:none;">0</span>
-            <button class="item-plus" onclick="addItem(this, event)">+</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    {% endif %}
   </div>
 
   <!-- Payment method (shown when cart has items) -->
@@ -515,8 +395,6 @@
       </button>
     </div>
   </div>
-
-  <!-- Cart bar -->
   <div class="cart-bar" id="cartBar">
     <div class="cart-info">
       <div class="cart-count" id="cartCount">0 items</div>
@@ -538,10 +416,15 @@
     // sessionStorage is tab-specific — another browser/device has no access
     // -----------------------------------------------------------------------
 
-    if (REFRESH_TOKEN) {
-      // First load — store token and clean the URL
-      sessionStorage.setItem('nfc_refresh_token', REFRESH_TOKEN);
+    // Always clean the URL immediately — remove token from address bar
+    // Do this before anything else so token never stays visible
+    if (window.location.search) {
       history.replaceState(null, '', '/order');
+    }
+
+    if (REFRESH_TOKEN) {
+      // First load — store refresh token in sessionStorage
+      sessionStorage.setItem('nfc_refresh_token', REFRESH_TOKEN);
     }
 
     // Soft reload via fetch — sends X-Refresh-Token header
@@ -584,10 +467,110 @@
     // Intercept mobile pull-to-refresh
     // We can't prevent it fully, but the !REFRESH_TOKEN check above handles the reload
 
+    // -----------------------------------------------------------------------
+    // Language switching
+    // -----------------------------------------------------------------------
+    let currentLang = localStorage.getItem('lang') || 'en';
+
+    const i18n = {
+      en: {
+        paymentTitle:   'Payment method',
+        cash:           'Cash',
+        card:           'Card',
+        orderBtn:       'Order now →',
+        cartItem:       'item',
+        cartItems:      'items',
+        successTitle:   'Order placed!',
+        successMsg:     'Your drinks are on their way.\nSit back and relax.',
+        successHint:    'Tap the NFC tag again to place a new order.',
+        sending:        'Sending...',
+        unavailable:    'Unavailable',
+      },
+      gr: {
+        paymentTitle:   'Τρόπος πληρωμής',
+        cash:           'Μετρητά',
+        card:           'Κάρτα',
+        orderBtn:       'Παραγγελία →',
+        cartItem:       'προϊόν',
+        cartItems:      'προϊόντα',
+        successTitle:   'Η παραγγελία ελήφθη!',
+        successMsg:     'Τα ποτά σας έρχονται.\nΑπολαύστε!',
+        successHint:    'Αγγίξτε ξανά το NFC για νέα παραγγελία.',
+        sending:        'Αποστολή...',
+        unavailable:    'Μη διαθέσιμο',
+      }
+    };
+
+    function setLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+
+      // Toggle buttons
+      document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+      document.getElementById('btnGr').classList.toggle('active', lang === 'gr');
+
+      const t = i18n[lang];
+
+      // Payment section
+      const pt = document.querySelector('.payment-title');
+      if (pt) pt.textContent = t.paymentTitle;
+      const payCash = document.getElementById('payCash');
+      const payCard = document.getElementById('payCard');
+      if (payCash) payCash.childNodes[payCash.childNodes.length - 1].textContent = t.cash;
+      if (payCard) payCard.childNodes[payCard.childNodes.length - 1].textContent = t.card;
+
+      // Order button
+      const btn = document.getElementById('orderBtn');
+      if (btn && !btn.disabled) btn.textContent = t.orderBtn;
+
+      // Cart count update
+      const items = Object.values(cart);
+      const count = items.reduce((s, i) => s + i.qty, 0);
+      if (count > 0) {
+        document.getElementById('cartCount').textContent =
+          count + ' ' + (count !== 1 ? t.cartItems : t.cartItem);
+      }
+
+      // Unavailable labels
+      document.querySelectorAll('.unavailable-label').forEach(el => {
+        el.textContent = t.unavailable;
+      });
+
+      // Category titles
+      document.querySelectorAll('.cat-title[data-en]').forEach(el => {
+        el.textContent = el.dataset[lang];
+      });
+
+      // Item names
+      document.querySelectorAll('.cat-item').forEach(el => {
+        const nameEl = el.querySelector('.item-name');
+        if (!nameEl) return;
+        nameEl.textContent = lang === 'gr'
+          ? (el.dataset.nameGr || el.dataset.name)
+          : el.dataset.name;
+      });
+
+      // Success box
+      const st = document.getElementById('successTitle');
+      const sm = document.getElementById('successMsg');
+      const sh = document.getElementById('successHint');
+      if (st) st.textContent = t.successTitle;
+      if (sm) sm.innerHTML  = t.successMsg.replace('\n', '<br>');
+      if (sh) sh.textContent = t.successHint;
+    }
+
+    // Apply saved language on load
+    if (currentLang === 'gr') setLang('gr');
+
     function selectPayment(method) {
       paymentMethod = method;
       document.getElementById('payCash').classList.toggle('selected', method === 'cash');
       document.getElementById('payCard').classList.toggle('selected', method === 'card');
+    }
+
+    function handleItemClick(el) {
+      if (el.dataset.available === 'no') return;
+      toggleItem(el);
     }
 
     function toggleItem(el) {
@@ -640,7 +623,8 @@
       const total = items.reduce((s, i) => s + i.price * i.qty, 0);
       const count = items.reduce((s, i) => s + i.qty, 0);
 
-      document.getElementById("cartCount").textContent = count + " item" + (count !== 1 ? "s" : "");
+      const t = i18n[currentLang];
+      document.getElementById("cartCount").textContent = count + ' ' + (count !== 1 ? t.cartItems : t.cartItem);
       document.getElementById("cartTotal").textContent = "€" + total.toFixed(2);
       document.getElementById("cartBar").classList.toggle("visible", count > 0);
       document.getElementById("paymentSection").classList.toggle("visible", count > 0);
