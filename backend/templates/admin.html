@@ -329,16 +329,20 @@
     }
   };
 
-  // Name map for product translation: { item_id: { en: '...', gr: '...' } }
-  const nameMap = JSON.parse(document.getElementById('nameMapData').textContent);
-
-  function getItemName(item) {
-    if (currentLang === 'gr' && nameMap[item.id]) return nameMap[item.id].gr;
-    if (nameMap[item.id]) return nameMap[item.id].en;
-    return item.name;
-  }
-
   let currentLang = localStorage.getItem('adminLang') || 'en';
+
+  // Name map loaded via API to avoid Jinja2 escaping issues
+  let nameMap = {};
+  fetch('/api/menu-names')
+    .then(r => r.json())
+    .then(data => { nameMap = data; })
+    .catch(() => {});
+
+  function getItemName(id, fallback) {
+    if (currentLang === 'gr' && nameMap[id]) return nameMap[id].gr;
+    if (nameMap[id]) return nameMap[id].en;
+    return fallback;
+  }
 
   function setLang(lang) {
     currentLang = lang;
@@ -391,13 +395,11 @@
     document.querySelectorAll('.item-name[data-id]').forEach(el => {
       const id  = el.dataset.id;
       const qty = el.dataset.qty;
-      const name = (lang === 'gr' && nameMap[id]) ? nameMap[id].gr : (nameMap[id] ? nameMap[id].en : el.dataset.nameEn);
-      el.textContent = qty + 'x ' + name;
+      el.textContent = qty + 'x ' + getItemName(id, el.dataset.nameEn);
     });
   }
 
   if (currentLang === 'gr') setLang('gr');
 </script>
-<script type="application/json" id="nameMapData">{{ name_map_json }}</script>
 </body>
 </html>
