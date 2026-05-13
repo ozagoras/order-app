@@ -39,6 +39,70 @@
       border-radius: 20px;
     }
 
+    /* Tabs */
+    .tab-bar {
+      display: flex;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 3px;
+      margin-top: 12px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: #fff;
+      color: var(--ocean);
+    }
+
+    /* Orders view (read-only) */
+    #ordersView { display: none; padding-bottom: 40px; }
+    #orderView  { display: block; }
+
+    .rv-section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ocean);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 16px 16px 8px;
+    }
+    .rv-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 0 16px 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+    .rv-card.pending   { border-left: 4px solid #F4A825; }
+    .rv-card.preparing { border-left: 4px solid #1A6B7C; }
+    .rv-card.ready     { border-left: 4px solid #22c55e; }
+    .rv-card.delivered { border-left: 4px solid #d1d5db; opacity: 0.6; }
+    .rv-card.cancelled { border-left: 4px solid #ef4444; opacity: 0.6; }
+    .rv-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .rv-table { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; color: var(--dark); }
+    .rv-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
+    .rv-badge.pending   { background: #FEF3C7; color: #92400E; }
+    .rv-badge.preparing { background: #DBEAFE; color: #1E40AF; }
+    .rv-badge.ready     { background: #D1FAE5; color: #065F46; }
+    .rv-badge.delivered { background: #F3F4F6; color: #6B7280; }
+    .rv-badge.cancelled { background: #FEE2E2; color: #991B1B; }
+    .rv-time { font-size: 11px; color: #aaa; margin-left: auto; }
+    .rv-item { display: flex; justify-content: space-between; font-size: 13px; color: #444; padding: 2px 0; }
+    .rv-total { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ocean); border-top: 1px solid #f0f0f0; padding-top: 6px; margin-top: 4px; }
+    .rv-empty { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+
     /* Table selector */
     .table-selector {
       padding: 16px 16px 0;
@@ -184,6 +248,7 @@
   </div>
 </div>
 
+<div id="orderView">
 <!-- Table selector -->
 <div class="table-selector">
   <div class="table-label" id="tableLabel">Select Table</div>
@@ -424,7 +489,104 @@
     document.getElementById('orderBtn').textContent = i18n[currentLang].orderBtn;
     updateCartBar();
   }
+
+  // -----------------------------------------------------------------------
+  // Tab switching
+  // -----------------------------------------------------------------------
+  let ordersRefreshTimer = null;
+
+  function switchTab(tab) {
+    const isOrder = tab === 'order';
+    document.getElementById('orderView').style.display  = isOrder ? 'block' : 'none';
+    document.getElementById('ordersView').style.display = isOrder ? 'none'  : 'block';
+    document.getElementById('tabOrder').classList.toggle('active',  isOrder);
+    document.getElementById('tabOrders').classList.toggle('active', !isOrder);
+
+    if (!isOrder) {
+      loadOrders();
+      ordersRefreshTimer = setInterval(loadOrders, 10000);
+    } else {
+      if (ordersRefreshTimer) { clearInterval(ordersRefreshTimer); ordersRefreshTimer = null; }
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Load orders from API
+  // -----------------------------------------------------------------------
+  async function loadOrders() {
+    try {
+      const res  = await fetch('/waiter/orders');
+      const data = await res.json();
+      renderOrders(data.orders || []);
+    } catch (e) {
+      document.getElementById('ordersContent').innerHTML = '<div class="rv-empty">Could not load orders.</div>';
+    }
+  }
+
+  function renderOrders(orders) {
+    if (!orders.length) {
+      document.getElementById('ordersContent').innerHTML = '<div class="rv-empty">🏖️ No orders yet.</div>';
+      return;
+    }
+
+    const active    = orders.filter(o => !['delivered','cancelled'].includes(o.status));
+    const delivered = orders.filter(o => o.status === 'delivered');
+    const cancelled = orders.filter(o => o.status === 'cancelled');
+
+    let html = '';
+
+    if (active.length) {
+      active.forEach(o => { html += orderCard(o); });
+    }
+    if (delivered.length) {
+      html += '<div class="rv-section-label">Delivered</div>';
+      delivered.forEach(o => { html += orderCard(o); });
+    }
+    if (cancelled.length) {
+      html += '<div class="rv-section-label" style="color:#ef4444;">Cancelled</div>';
+      cancelled.forEach(o => { html += orderCard(o); });
+    }
+
+    document.getElementById('ordersContent').innerHTML = html;
+
+    // Convert UTC times to local
+    document.querySelectorAll('.rv-time[data-iso]').forEach(el => {
+      const d = new Date(el.dataset.iso);
+      el.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
+  }
+
+  function orderCard(o) {
+    const payIcon  = o.payment === 'cash' ? '💵' : '💳';
+    const waiter   = o.source === 'waiter' ? `<span style="font-size:11px;background:#1A6B7C;color:#fff;padding:1px 7px;border-radius:8px;">👨‍🍳 ${o.waiter_name||''}</span>` : '';
+    const items    = (o.order_items || []).map(i =>
+      `<div class="rv-item"><span>${i.qty}x ${i.name}</span><span>€${(i.price * i.qty).toFixed(2)}</span></div>`
+    ).join('');
+
+    return `
+    <div class="rv-card ${o.status}">
+      <div class="rv-top">
+        <div class="rv-table">${o.table_id}</div>
+        <span class="rv-badge ${o.status}">${o.status}</span>
+        <span style="font-size:12px;">${payIcon}</span>
+        ${waiter}
+        <div class="rv-time" data-iso="${o.iso_time}"></div>
+      </div>
+      ${items}
+      <div class="rv-total">€${o.total.toFixed(2)}</div>
+    </div>`;
+  }
+
 </script>
+
+</div><!-- end orderView -->
+
+<!-- Orders view (read-only) -->
+<div id="ordersView">
+  <div id="ordersContent">
+    <div class="rv-empty">Loading orders...</div>
+  </div>
+</div>
 
 </body>
 </html>
