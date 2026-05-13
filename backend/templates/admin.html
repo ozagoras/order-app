@@ -34,6 +34,9 @@
     nav .brand { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--sun); }
     nav a { font-size: 13px; color: rgba(255,255,255,0.5); text-decoration: none; }
     nav a:hover { color: #fff; }
+    .lang-toggle { display: flex; gap: 4px; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 3px; }
+    .lang-btn { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 16px; border: none; cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); font-family: 'Syne', sans-serif; transition: all 0.2s; }
+    .lang-btn.active { background: #fff; color: var(--dark); }
 
     .page-header {
       padding: 28px 24px 16px;
@@ -119,34 +122,40 @@
 
 <nav>
   <div class="brand">🍹 Beach Bar Admin</div>
-  <a href="/admin/logout">Sign out</a>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn"        id="btnGr" onclick="setLang('gr')">ΕΛ</button>
+    </div>
+    <a href="/admin/logout" id="signOutLink">Sign out</a>
+  </div>
 </nav>
 
 <div class="page-header">
-  <h1>Orders</h1>
-  <div class="refresh-note">Auto-refreshes every 10s</div>
+  <h1 id="pageTitle">Orders</h1>
+  <div class="refresh-note" id="refreshNote">Auto-refreshes every 10s</div>
 </div>
 
-<!-- Stats — calculated in Python and passed to template -->
+<!-- Stats -->
 <div class="stats">
   <div class="stat">
-    <div class="label">Pending</div>
+    <div class="label" data-en="Pending"   data-gr="Εκκρεμείς">Pending</div>
     <div class="value" style="color:var(--sun)">{{ pending_count }}</div>
   </div>
   <div class="stat">
-    <div class="label">Preparing</div>
+    <div class="label" data-en="Preparing" data-gr="Προετοιμασία">Preparing</div>
     <div class="value" style="color:var(--ocean)">{{ preparing_count }}</div>
   </div>
   <div class="stat">
-    <div class="label">Ready</div>
+    <div class="label" data-en="Ready"     data-gr="Έτοιμα">Ready</div>
     <div class="value" style="color:#22c55e">{{ ready_count }}</div>
   </div>
   <div class="stat">
-    <div class="label">Delivered</div>
+    <div class="label" data-en="Delivered" data-gr="Παραδόθηκαν">Delivered</div>
     <div class="value" style="color:#9ca3af">{{ delivered_count }}</div>
   </div>
   <div class="stat">
-    <div class="label">Cancelled</div>
+    <div class="label" data-en="Cancelled" data-gr="Ακυρώθηκαν">Cancelled</div>
     <div class="value" style="color:#ef4444">{{ cancelled_count }}</div>
   </div>
 </div>
@@ -169,7 +178,7 @@
       <div class="order-top">
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge {{ order.status }}">{{ order.status }}</span>
-        <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
+        <span style="font-size:12px;"><span class='pay-text' data-type='{{ order.payment }}'>{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></span>
         {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 {{ order.waiter_name }}</span>{% endif %}
         <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
       </div>
@@ -182,7 +191,7 @@
       </div>
       {% endfor %}
 
-      <div class="order-total">Total: €{{ "%.2f"|format(order.total) }}</div>
+      <div class="order-total"><span class='total-label'>Total:</span> €{{ "%.2f"|format(order.total) }}</div>
     </div>
 
     <div class="status-actions">
@@ -216,7 +225,7 @@
   {% for order in orders %}{% if order.status == 'delivered' %}{% set _ = has_delivered.append(1) %}{% endif %}{% endfor %}
 
   {% if has_delivered %}
-  <div class="section-label">Delivered</div>
+  <div class="section-label" data-en="Delivered" data-gr="Παραδόθηκαν">Delivered</div>
   {% for order in orders %}
   {% if order.status == 'delivered' %}
   <div class="order-card delivered">
@@ -224,7 +233,7 @@
       <div class="order-top">
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge delivered">delivered</span>
-        <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
+        <span style="font-size:12px;"><span class='pay-text' data-type='{{ order.payment }}'>{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></span>
         {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 {{ order.waiter_name }}</span>{% endif %}
         <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
       </div>
@@ -235,7 +244,7 @@
         <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
       </div>
       {% endfor %}
-      <div class="order-total">€{{ "%.2f"|format(order.total) }}</div>
+      <div class="order-total"><span class='total-label'>Total:</span> €{{ "%.2f"|format(order.total) }}</div>
     </div>
   </div>
   {% endif %}
@@ -247,7 +256,7 @@
   {% for order in orders %}{% if order.status == 'cancelled' %}{% set _ = has_cancelled.append(1) %}{% endif %}{% endfor %}
 
   {% if has_cancelled %}
-  <div class="section-label" style="color:#991B1B;">Cancelled</div>
+  <div class="section-label" data-en="Cancelled" data-gr="Ακυρώθηκαν" style="color:#991B1B;">Cancelled</div>
   {% for order in orders %}
   {% if order.status == 'cancelled' %}
   <div class="order-card cancelled">
@@ -255,7 +264,7 @@
       <div class="order-top">
         <div class="order-table">{{ order.table_id }}</div>
         <span class="status-badge cancelled">cancelled</span>
-        <span style="font-size:12px;">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span>
+        <span style="font-size:12px;"><span class='pay-text' data-type='{{ order.payment }}'>{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></span>
         {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 {{ order.waiter_name }}</span>{% endif %}
         <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
       </div>
@@ -266,7 +275,7 @@
         <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
       </div>
       {% endfor %}
-      <div class="order-total">€{{ "%.2f"|format(order.total) }}</div>
+      <div class="order-total"><span class='total-label'>Total:</span> €{{ "%.2f"|format(order.total) }}</div>
     </div>
   </div>
   {% endif %}
@@ -277,13 +286,100 @@
 
 </div>
 <script>
-  // Convert all UTC timestamps to local time
+  // ── Local time ──
   document.querySelectorAll('.local-time').forEach(el => {
     const iso = el.dataset.iso;
     if (!iso) return;
-    const date = new Date(iso);
-    el.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    el.textContent = new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   });
+
+  // ── Language ──
+  const i18n = {
+    en: {
+      pageTitle:    'Orders',
+      refresh:      'Auto-refreshes every 10s',
+      signOut:      'Sign out',
+      noOrders:     'No orders yet — waiting for customers to tap!',
+      delivered:    'Delivered',
+      cancelled:    'Cancelled',
+      total:        'Total',
+      cash:         '💵 Cash',
+      card:         '💳 Card',
+      preparing:    '▶ Preparing',
+      ready:        '✓ Ready',
+      deliver:      '✓ Delivered',
+      cancel:       '✕ Cancel',
+      statuses: { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
+    },
+    gr: {
+      pageTitle:    'Παραγγελίες',
+      refresh:      'Ανανέωση κάθε 10δλ',
+      signOut:      'Αποσύνδεση',
+      noOrders:     'Δεν υπάρχουν παραγγελίες ακόμα!',
+      delivered:    'Παραδόθηκαν',
+      cancelled:    'Ακυρώθηκαν',
+      total:        'Σύνολο',
+      cash:         '💵 Μετρητά',
+      card:         '💳 Κάρτα',
+      preparing:    '▶ Προετοιμασία',
+      ready:        '✓ Έτοιμο',
+      deliver:      '✓ Παραδόθηκε',
+      cancel:       '✕ Ακύρωση',
+      statuses: { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
+    }
+  };
+
+  let currentLang = localStorage.getItem('adminLang') || 'en';
+
+  function setLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('adminLang', lang);
+    const t = i18n[lang];
+
+    document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+    document.getElementById('btnGr').classList.toggle('active', lang === 'gr');
+    document.getElementById('pageTitle').textContent   = t.pageTitle;
+    document.getElementById('refreshNote').textContent = t.refresh;
+    document.getElementById('signOutLink').textContent = t.signOut;
+
+    // Stat labels
+    document.querySelectorAll('.label[data-en]').forEach(el => {
+      el.textContent = el.dataset[lang];
+    });
+
+    // Section labels
+    document.querySelectorAll('.section-label[data-en]').forEach(el => {
+      el.textContent = el.dataset[lang];
+    });
+
+    // Status badges
+    document.querySelectorAll('.status-badge').forEach(el => {
+      const status = el.className.replace('status-badge', '').trim();
+      el.textContent = t.statuses[status] || status;
+    });
+
+    // Payment spans
+    document.querySelectorAll('.pay-text').forEach(el => {
+      el.textContent = el.dataset.type === 'cash' ? t.cash : t.card;
+    });
+
+    // Total labels
+    document.querySelectorAll('.total-label').forEach(el => {
+      el.textContent = t.total + ':';
+    });
+
+    // Buttons
+    document.querySelectorAll('.btn-preparing').forEach(el => { el.textContent = t.preparing; });
+    document.querySelectorAll('.btn-ready').forEach(el => { el.textContent = t.ready; });
+    document.querySelectorAll('.btn-delivered').forEach(el => { el.textContent = t.deliver; });
+    document.querySelectorAll('.btn-cancelled').forEach(el => { el.textContent = t.cancel; });
+
+    // Empty state
+    const empty = document.querySelector('.empty');
+    if (empty) empty.querySelector('div:last-child') && (empty.lastChild.textContent = t.noOrders);
+  }
+
+  if (currentLang === 'gr') setLang('gr');
 </script>
 </body>
 </html>

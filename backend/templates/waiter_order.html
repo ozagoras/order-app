@@ -14,7 +14,7 @@
       --light: #F5F7F7;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--light); min-height: 100vh; padding-bottom: 80px; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--light); min-height: 100vh; padding-bottom: 100px; }
 
     /* Header */
     .header {
@@ -38,23 +38,20 @@
     .lang-btn { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 16px; border: none; cursor: pointer; background: transparent; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; transition: all 0.2s; }
     .lang-btn.active { background: #fff; color: var(--ocean); }
 
-    /* Bottom nav */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      background: var(--dark);
+    /* Top nav */
+    .top-nav {
       display: flex;
-      z-index: 150;
+      background: var(--dark);
       padding: 0;
     }
     .nav-btn {
       flex: 1;
-      padding: 14px 8px 18px;
+      padding: 14px 8px;
       border: none;
       background: transparent;
       color: rgba(255,255,255,0.45);
       font-family: 'Syne', sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
@@ -63,10 +60,10 @@
       gap: 4px;
       transition: all 0.2s;
       letter-spacing: 0.5px;
+      border-bottom: 3px solid transparent;
     }
-    .nav-btn .nav-icon { font-size: 22px; }
-    .nav-btn.active { color: var(--sun); }
-    .nav-btn.active .nav-icon { transform: scale(1.1); }
+    .nav-btn .nav-icon { font-size: 20px; }
+    .nav-btn.active { color: var(--sun); border-bottom-color: var(--sun); }
 
     /* Views */
     #viewOrder  { display: block; }
@@ -115,7 +112,7 @@
     .pay-icon { font-size: 22px; display: block; margin-bottom: 4px; }
 
     /* Cart */
-    .cart-bar { position: fixed; bottom: 60px; left: 0; right: 0; background: var(--dark); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 100; transform: translateY(100px); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--dark); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 100; transform: translateY(100px); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .cart-bar.visible { transform: translateY(0); }
     .cart-info { color: #fff; }
     .cart-count { font-size: 12px; color: rgba(255,255,255,0.5); }
@@ -268,14 +265,10 @@
   <div id="rvContent"><div class="rv-empty">Loading...</div></div>
 </div>
 
-<!-- Bottom nav -->
-<div class="bottom-nav">
-  <button class="nav-btn active" id="navOrder"  onclick="switchView('order')">
-    <span class="nav-icon">🛒</span>ORDER
-  </button>
-  <button class="nav-btn"        id="navOrders" onclick="switchView('orders')">
-    <span class="nav-icon">📋</span>ORDERS
-  </button>
+<!-- Top nav -->
+<div class="top-nav">
+  <button class="nav-btn active" id="navOrder"  onclick="switchView('order')">NEW ORDER</button>
+  <button class="nav-btn"        id="navOrders" onclick="switchView('orders')">ORDERS</button>
 </div>
 
 <script>
