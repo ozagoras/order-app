@@ -38,32 +38,10 @@
     .lang-btn { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 16px; border: none; cursor: pointer; background: transparent; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; transition: all 0.2s; }
     .lang-btn.active { background: #fff; color: var(--ocean); }
 
-    /* Top nav */
-    .top-nav {
-      display: flex;
-      background: var(--dark);
-      padding: 0;
-    }
-    .nav-btn {
-      flex: 1;
-      padding: 14px 8px;
-      border: none;
-      background: transparent;
-      color: rgba(255,255,255,0.45);
-      font-family: 'Syne', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.2s;
-      letter-spacing: 0.5px;
-      border-bottom: 3px solid transparent;
-    }
-    .nav-btn .nav-icon { font-size: 20px; }
-    .nav-btn.active { color: var(--sun); border-bottom-color: var(--sun); }
+    /* Tab nav in header */
+    .tab-nav { display: flex; background: rgba(0,0,0,0.2); border-radius: 20px; padding: 3px; gap: 2px; }
+    .tab-nav-btn { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 16px; border: none; cursor: pointer; background: transparent; color: rgba(255,255,255,0.55); font-family: 'Syne', sans-serif; transition: all 0.2s; letter-spacing: 0.5px; white-space: nowrap; }
+    .tab-nav-btn.active { background: var(--sun); color: var(--dark); }
 
     /* Views */
     #viewOrder  { display: block; }
@@ -167,18 +145,22 @@
 <div class="header">
   <div class="header-top">
     <h1>👨‍🍳 Waiter Portal</h1>
-    <a href="/waiter/logout" class="logout-btn">Sign out</a>
+    <a href="/waiter/logout" class="logout-btn" id="logoutBtn">Sign out</a>
   </div>
   <div class="header-sub">
     <div class="waiter-badge">{{ username }}</div>
-    <div class="lang-toggle">
-      <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
-      <button class="lang-btn" id="btnGr" onclick="setLang('gr')">ΕΛ</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="tab-nav">
+        <button class="tab-nav-btn active" id="navOrder"  onclick="switchView('order')" >NEW ORDER</button>
+        <button class="tab-nav-btn"        id="navOrders" onclick="switchView('orders')">ORDERS</button>
+      </div>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
+        <button class="lang-btn"        id="btnGr" onclick="setLang('gr')">ΕΛ</button>
+      </div>
     </div>
   </div>
 </div>
-
-<!-- ═══════════════ ORDER VIEW ═══════════════ -->
 <div id="viewOrder">
 
   <div class="table-selector">
@@ -266,10 +248,6 @@
 </div>
 
 <!-- Top nav -->
-<div class="top-nav">
-  <button class="nav-btn active" id="navOrder"  onclick="switchView('order')">NEW ORDER</button>
-  <button class="nav-btn"        id="navOrders" onclick="switchView('orders')">ORDERS</button>
-</div>
 
 <script>
   const cart = {};
@@ -280,8 +258,22 @@
 
   // ── Language ──
   const i18n = {
-    en: { tableLabel:'Select Table', payLabel:'Payment method', cash:'Cash', card:'Card', orderBtn:'Order now →', item:'item', items:'items', unavailable:'Unavailable', successTitle:'Order placed!', successMsg:'Order sent to kitchen.', sending:'Sending...' },
-    gr: { tableLabel:'Επιλογή Τραπεζιού', payLabel:'Τρόπος πληρωμής', cash:'Μετρητά', card:'Κάρτα', orderBtn:'Παραγγελία →', item:'προϊόν', items:'προϊόντα', unavailable:'Μη διαθέσιμο', successTitle:'Η παραγγελία στάλθηκε!', successMsg:'Η παραγγελία στάλθηκε στην κουζίνα.', sending:'Αποστολή...' }
+    en: {
+      tableLabel: 'Select Table', payLabel: 'Payment method', cash: '💵 Cash', card: '💳 Card',
+      orderBtn: 'Order now →', item: 'item', items: 'items', unavailable: 'Unavailable',
+      successTitle: 'Order placed!', successMsg: 'Order sent to kitchen.', sending: 'Sending...',
+      noOrders: 'No orders yet.', total: 'Total', signOut: 'Sign out',
+      statLabels: { pending:'Pending', preparing:'Preparing', ready:'Ready', delivered:'Delivered', cancelled:'Cancelled' },
+      statuses:   { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
+    },
+    gr: {
+      tableLabel: 'Επιλογή Τραπεζιού', payLabel: 'Τρόπος πληρωμής', cash: '💵 Μετρητά', card: '💳 Κάρτα',
+      orderBtn: 'Παραγγελία →', item: 'προϊόν', items: 'προϊόντα', unavailable: 'Μη διαθέσιμο',
+      successTitle: 'Η παραγγελία στάλθηκε!', successMsg: 'Η παραγγελία στάλθηκε στην κουζίνα.', sending: 'Αποστολή...',
+      noOrders: 'Δεν υπάρχουν παραγγελίες ακόμα.', total: 'Σύνολο', signOut: 'Αποσύνδεση',
+      statLabels: { pending:'Εκκρεμείς', preparing:'Προετοιμασία', ready:'Έτοιμα', delivered:'Παραδόθηκαν', cancelled:'Ακυρώθηκαν' },
+      statuses:   { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
+    }
   };
 
   function setLang(lang) {
@@ -292,10 +284,11 @@
     document.getElementById('btnGr').classList.toggle('active', lang === 'gr');
     document.getElementById('tableLabel').textContent = t.tableLabel;
     document.getElementById('payLabel').textContent   = t.payLabel;
+    if (document.getElementById('logoutBtn')) document.getElementById('logoutBtn').textContent = t.signOut;
     const btn = document.getElementById('orderBtn');
     if (btn && !btn.disabled) btn.textContent = t.orderBtn;
-    document.getElementById('payCash').childNodes[document.getElementById('payCash').childNodes.length-1].textContent = t.cash;
-    document.getElementById('payCard').childNodes[document.getElementById('payCard').childNodes.length-1].textContent = t.card;
+    document.getElementById('payCash').childNodes[document.getElementById('payCash').childNodes.length-1].textContent = t.cash.replace('💵 ','');
+    document.getElementById('payCard').childNodes[document.getElementById('payCard').childNodes.length-1].textContent = t.card.replace('💳 ','');
     document.querySelectorAll('.cat-title[data-en]').forEach(el => { el.textContent = el.dataset[lang]; });
     document.querySelectorAll('.cat-item').forEach(el => {
       const n = el.querySelector('.item-name');
@@ -304,6 +297,8 @@
     document.querySelectorAll('.unavailable-label').forEach(el => { el.textContent = t.unavailable; });
     const count = Object.values(cart).reduce((s,i) => s+i.qty, 0);
     if (count > 0) document.getElementById('cartCount').textContent = count + ' ' + (count !== 1 ? t.items : t.item);
+    // Reload orders view in new language if active
+    if (currentView === 'orders') loadOrders();
   }
 
   if (currentLang === 'gr') setLang('gr');
@@ -315,6 +310,10 @@
     document.getElementById('viewOrder').style.display  = isOrder ? 'block' : 'none';
     document.getElementById('viewOrders').style.display = isOrder ? 'none'  : 'block';
     document.getElementById('navOrder').classList.toggle('active',  isOrder);
+    document.getElementById('navOrders').classList.toggle('active', !isOrder);
+    // sync both nav elements
+    document.querySelectorAll('.tab-nav-btn, .nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('navOrder').classList.toggle('active', isOrder);
     document.getElementById('navOrders').classList.toggle('active', !isOrder);
 
     if (!isOrder) {
@@ -343,33 +342,35 @@
     const delivered = orders.filter(o => o.status === 'delivered');
     const cancelled = orders.filter(o => o.status === 'cancelled');
 
+    const t = i18n[currentLang];
+
     // Stats
     document.getElementById('rvStats').innerHTML = `
-      <div class="rv-stat"><div class="s-label">Pending</div><div class="s-value" style="color:#F4A825">${pending.length}</div></div>
-      <div class="rv-stat"><div class="s-label">Preparing</div><div class="s-value" style="color:#1A6B7C">${preparing.length}</div></div>
-      <div class="rv-stat"><div class="s-label">Ready</div><div class="s-value" style="color:#22c55e">${ready.length}</div></div>
-      <div class="rv-stat"><div class="s-label">Delivered</div><div class="s-value" style="color:#9ca3af">${delivered.length}</div></div>
+      <div class="rv-stat"><div class="s-label">${t.statLabels.pending}</div><div class="s-value" style="color:#F4A825">${pending.length}</div></div>
+      <div class="rv-stat"><div class="s-label">${t.statLabels.preparing}</div><div class="s-value" style="color:#1A6B7C">${preparing.length}</div></div>
+      <div class="rv-stat"><div class="s-label">${t.statLabels.ready}</div><div class="s-value" style="color:#22c55e">${ready.length}</div></div>
+      <div class="rv-stat"><div class="s-label">${t.statLabels.delivered}</div><div class="s-value" style="color:#9ca3af">${delivered.length}</div></div>
     `;
 
     if (!orders.length) {
-      document.getElementById('rvContent').innerHTML = '<div class="rv-empty">🏖️ No orders yet.</div>';
+      document.getElementById('rvContent').innerHTML = `<div class="rv-empty">🏖️ ${t.noOrders}</div>`;
       return;
     }
 
     let html = '';
     const active = [...pending, ...preparing, ...ready];
-    active.forEach(o => { html += orderCard(o); });
+    active.forEach(o => { html += orderCard(o, t); });
 
     if (delivered.length) {
-      html += '<div class="rv-section">Delivered</div>';
-      delivered.forEach(o => { html += orderCard(o); });
+      html += `<div class="rv-section">${t.statLabels.delivered}</div>`;
+      delivered.forEach(o => { html += orderCard(o, t); });
     }
     if (cancelled.length) {
-      html += '<div class="rv-section" style="color:#ef4444;">Cancelled</div>';
-      cancelled.forEach(o => { html += orderCard(o); });
+      html += `<div class="rv-section" style="color:#ef4444;">${t.statLabels.cancelled}</div>`;
+      cancelled.forEach(o => { html += orderCard(o, t); });
     }
     if (!active.length && !delivered.length && !cancelled.length) {
-      html = '<div class="rv-empty">🏖️ No orders yet.</div>';
+      html = `<div class="rv-empty">🏖️ ${t.noOrders}</div>`;
     }
 
     document.getElementById('rvContent').innerHTML = html;
@@ -381,11 +382,12 @@
     });
   }
 
-  function orderCard(o) {
-    const payIcon = o.payment === 'cash' ? '💵' : '💳';
+  function orderCard(o, t) {
+    const payText = o.payment === 'cash' ? t.cash : t.card;
     const waiter  = o.source === 'waiter' && o.waiter_name
       ? `<span style="font-size:11px;background:#1A6B7C;color:#fff;padding:1px 7px;border-radius:8px;">👨‍🍳 ${o.waiter_name}</span>`
       : '';
+    const statusLabel = t.statuses[o.status] || o.status;
     const items = (o.order_items || []).map(i =>
       `<div class="rv-item"><span>${i.qty}x ${i.name}</span><span>€${(i.price * i.qty).toFixed(2)}</span></div>`
     ).join('');
@@ -393,14 +395,14 @@
     <div class="rv-card ${o.status}">
       <div class="rv-top">
         <div class="rv-table">${o.table_id}</div>
-        <span class="rv-badge ${o.status}">${o.status}</span>
-        <span style="font-size:12px;">${payIcon}</span>
+        <span class="rv-badge ${o.status}">${statusLabel}</span>
+        <span style="font-size:12px;">${payText}</span>
         ${waiter}
         <div class="rv-time" data-iso="${o.iso_time}"></div>
       </div>
       <div class="rv-id">${o.short_id}</div>
       ${items}
-      <div class="rv-total">€${o.total.toFixed(2)}</div>
+      <div class="rv-total">${t.total}: €${o.total.toFixed(2)}</div>
     </div>`;
   }
 
