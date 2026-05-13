@@ -278,7 +278,75 @@
       color: var(--ocean);
       background: #EBF5F7;
     }
+    .payment-section.required {
+      animation: shake 0.4s ease;
+    }
+    .payment-section.required .payment-btn:not(.selected) {
+      border-color: var(--coral);
+      background: #FFF0ED;
+    }
+    .payment-section.required .payment-title {
+      color: var(--coral);
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-6px); }
+      40%       { transform: translateX(6px); }
+      60%       { transform: translateX(-4px); }
+      80%       { transform: translateX(4px); }
+    }
     .payment-btn .pay-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+
+    /* Payment popup */
+    .popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .popup-overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .popup-box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.2s;
+    }
+    .popup-overlay.visible .popup-box { transform: scale(1); }
+    .popup-box .popup-icon { font-size: 48px; margin-bottom: 12px; }
+    .popup-box h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+    .popup-box p { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 20px; }
+    .popup-close {
+      width: 100%;
+      padding: 12px;
+      background: var(--ocean);
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
 
     /* Success */
     .success-box {
@@ -485,6 +553,9 @@
         successHint:    'Tap the NFC tag again to place a new order.',
         sending:        'Sending...',
         unavailable:    'Unavailable',
+        popupTitle:     'Select Payment',
+        popupMsg:       'Please choose a payment method before placing your order.',
+        popupBtn:       'Got it',
       },
       gr: {
         paymentTitle:   'Τρόπος πληρωμής',
@@ -498,6 +569,9 @@
         successHint:    'Αγγίξτε ξανά το NFC για νέα παραγγελία.',
         sending:        'Αποστολή...',
         unavailable:    'Μη διαθέσιμο',
+        popupTitle:     'Επιλογή Πληρωμής',
+        popupMsg:       'Παρακαλώ επιλέξτε τρόπο πληρωμής πριν την παραγγελία.',
+        popupBtn:       'Εντάξει',
       }
     };
 
@@ -562,7 +636,7 @@
     // Apply saved language on load
     if (currentLang === 'gr') setLang('gr');
 
-    function selectPayment(method) {
+function selectPayment(method) {
       paymentMethod = method;
       document.getElementById('payCash').classList.toggle('selected', method === 'cash');
       document.getElementById('payCard').classList.toggle('selected', method === 'card');
@@ -642,13 +716,10 @@
       if (!items.length) return;
 
       if (!paymentMethod) {
-        // Shake the payment section to prompt selection
         const ps = document.getElementById('paymentSection');
-        ps.style.transition = 'transform 0.1s';
-        ps.style.transform = 'translateX(8px)';
-        setTimeout(() => { ps.style.transform = 'translateX(-8px)'; }, 100);
-        setTimeout(() => { ps.style.transform = 'translateX(4px)'; },  200);
-        setTimeout(() => { ps.style.transform = 'translateX(0)'; },    300);
+        ps.classList.add('required');
+        ps.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => ps.classList.remove('required'), 2000);
         return;
       }
 

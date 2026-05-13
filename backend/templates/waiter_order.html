@@ -108,7 +108,48 @@
     .payment-options { display: flex; gap: 10px; }
     .payment-btn { flex: 1; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; background: #fff; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #888; cursor: pointer; transition: all 0.2s; text-align: center; }
     .payment-btn.selected { border-color: var(--ocean); color: var(--ocean); background: #EBF5F7; }
+    .payment-section.required { animation: shake 0.4s ease; }
+    .payment-section.required .payment-btn:not(.selected) { border-color: #E8603A; background: #FFF0ED; }
+    .payment-section.required .payment-title { color: #E8603A; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-6px); }
+      40%       { transform: translateX(6px); }
+      60%       { transform: translateX(-4px); }
+      80%       { transform: translateX(4px); }
+    }
     .pay-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+
+    /* Payment popup */
+    .popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .popup-overlay.visible { opacity: 1; pointer-events: all; }
+    .popup-box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.2s;
+    }
+    .popup-overlay.visible .popup-box { transform: scale(1); }
+    .popup-box .popup-icon { font-size: 48px; margin-bottom: 12px; }
+    .popup-box h3 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 8px; }
+    .popup-box p  { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 20px; }
+    .popup-close  { width: 100%; padding: 12px; background: var(--ocean); color: #fff; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; }
 
     /* Cart */
     .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--dark); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 100; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -208,6 +249,16 @@
     <button class="payment-btn" id="payCard" onclick="selectPayment('card')">
       <span class="pay-icon">💳</span>Card
     </button>
+  </div>
+</div>
+
+<!-- Payment popup -->
+<div class="popup-overlay" id="paymentPopup" onclick="closePaymentPopup()">
+  <div class="popup-box" onclick="event.stopPropagation()">
+    <div class="popup-icon">💳</div>
+    <h3 id="popupTitle">Select Payment</h3>
+    <p id="popupMsg">Please choose a payment method before placing your order.</p>
+    <button class="popup-close" id="popupBtn" onclick="closePaymentPopup()">Got it</button>
   </div>
 </div>
 
@@ -319,11 +370,9 @@
     if (!items.length) return;
     if (!paymentMethod) {
       const ps = document.getElementById('paymentSection');
-      ps.style.transition = 'transform 0.1s';
-      ps.style.transform = 'translateX(8px)';
-      setTimeout(() => { ps.style.transform = 'translateX(-8px)'; }, 100);
-      setTimeout(() => { ps.style.transform = 'translateX(4px)'; }, 200);
-      setTimeout(() => { ps.style.transform = 'translateX(0)'; }, 300);
+      ps.classList.add('required');
+      ps.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => ps.classList.remove('required'), 2000);
       return;
     }
     const btn = document.getElementById('orderBtn');
