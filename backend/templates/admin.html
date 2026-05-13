@@ -186,7 +186,7 @@
 
       {% for item in order.order_items %}
       <div class="order-item">
-        <span class="item-name">{{ item.qty }}x {{ item.name }}</span>
+        <span class="item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
         <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
       </div>
       {% endfor %}
@@ -240,7 +240,7 @@
       <div class="order-id">{{ order.short_id }}</div>
       {% for item in order.order_items %}
       <div class="order-item">
-        <span class="item-name">{{ item.qty }}x {{ item.name }}</span>
+        <span class="item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
         <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
       </div>
       {% endfor %}
@@ -271,7 +271,7 @@
       <div class="order-id">{{ order.short_id }}</div>
       {% for item in order.order_items %}
       <div class="order-item">
-        <span class="item-name">{{ item.qty }}x {{ item.name }}</span>
+        <span class="item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
         <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
       </div>
       {% endfor %}
@@ -329,6 +329,15 @@
     }
   };
 
+  // Name map for product translation: { item_id: { en: '...', gr: '...' } }
+  const nameMap = JSON.parse(document.getElementById('nameMapData').textContent);
+
+  function getItemName(item) {
+    if (currentLang === 'gr' && nameMap[item.id]) return nameMap[item.id].gr;
+    if (nameMap[item.id]) return nameMap[item.id].en;
+    return item.name;
+  }
+
   let currentLang = localStorage.getItem('adminLang') || 'en';
 
   function setLang(lang) {
@@ -377,9 +386,18 @@
     // Empty state
     const empty = document.querySelector('.empty');
     if (empty) empty.querySelector('div:last-child') && (empty.lastChild.textContent = t.noOrders);
+
+    // Translate item names in order cards
+    document.querySelectorAll('.item-name[data-id]').forEach(el => {
+      const id  = el.dataset.id;
+      const qty = el.dataset.qty;
+      const name = (lang === 'gr' && nameMap[id]) ? nameMap[id].gr : (nameMap[id] ? nameMap[id].en : el.dataset.nameEn);
+      el.textContent = qty + 'x ' + name;
+    });
   }
 
   if (currentLang === 'gr') setLang('gr');
 </script>
+<script type="application/json" id="nameMapData">{{ name_map_json }}</script>
 </body>
 </html>

@@ -20,8 +20,10 @@ Admin:
 import os
 import uuid
 import hmac
+import json
 import hashlib
 import logging
+from markupsafe import Markup
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 from flask import (Flask, request, jsonify, render_template,
@@ -368,6 +370,15 @@ def admin_dashboard():
     delivered_count = sum(1 for o in orders if o["status"] == "delivered")
     cancelled_count = sum(1 for o in orders if o["status"] == "cancelled")
 
+    # Build name map for product translation
+    menu = fetch_menu()
+    name_map = {}
+    for cat in menu:
+        for item in cat.get("products", []):
+            name_map[item["id"]] = {"en": item["name_en"], "gr": item["name_gr"]}
+
+    name_map_json = Markup(json.dumps(name_map))
+
     return render_template(
         "admin.html",
         orders=orders,
@@ -376,6 +387,7 @@ def admin_dashboard():
         ready_count=ready_count,
         delivered_count=delivered_count,
         cancelled_count=cancelled_count,
+        name_map_json=name_map_json,
     )
 
 

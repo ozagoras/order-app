@@ -111,7 +111,7 @@
     .refresh-note { font-size: 11px; color: #aaa; }
 
     /* Stats */
-    .rv-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; padding: 0 16px 16px; }
+    .rv-stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; padding: 0 16px 16px; }
     .rv-stat { background: #fff; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
     .rv-stat .s-label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .rv-stat .s-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; }
@@ -262,7 +262,7 @@
       tableLabel: 'Select Table', payLabel: 'Payment method', cash: '💵 Cash', card: '💳 Card',
       orderBtn: 'Order now →', item: 'item', items: 'items', unavailable: 'Unavailable',
       successTitle: 'Order placed!', successMsg: 'Order sent to kitchen.', sending: 'Sending...',
-      noOrders: 'No orders yet.', total: 'Total', signOut: 'Sign out',
+      noOrders: 'No orders yet.', total: 'Total', signOut: 'Sign out', newOrder: 'NEW ORDER', orders: 'ORDERS',
       statLabels: { pending:'Pending', preparing:'Preparing', ready:'Ready', delivered:'Delivered', cancelled:'Cancelled' },
       statuses:   { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
     },
@@ -270,7 +270,7 @@
       tableLabel: 'Επιλογή Τραπεζιού', payLabel: 'Τρόπος πληρωμής', cash: '💵 Μετρητά', card: '💳 Κάρτα',
       orderBtn: 'Παραγγελία →', item: 'προϊόν', items: 'προϊόντα', unavailable: 'Μη διαθέσιμο',
       successTitle: 'Η παραγγελία στάλθηκε!', successMsg: 'Η παραγγελία στάλθηκε στην κουζίνα.', sending: 'Αποστολή...',
-      noOrders: 'Δεν υπάρχουν παραγγελίες ακόμα.', total: 'Σύνολο', signOut: 'Αποσύνδεση',
+      noOrders: 'Δεν υπάρχουν παραγγελίες ακόμα.', total: 'Σύνολο', signOut: 'Αποσύνδεση', newOrder: 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ', orders: 'ΠΑΡΑΓΓΕΛΙΕΣ',
       statLabels: { pending:'Εκκρεμείς', preparing:'Προετοιμασία', ready:'Έτοιμα', delivered:'Παραδόθηκαν', cancelled:'Ακυρώθηκαν' },
       statuses:   { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
     }
@@ -297,6 +297,9 @@
     document.querySelectorAll('.unavailable-label').forEach(el => { el.textContent = t.unavailable; });
     const count = Object.values(cart).reduce((s,i) => s+i.qty, 0);
     if (count > 0) document.getElementById('cartCount').textContent = count + ' ' + (count !== 1 ? t.items : t.item);
+    // Tab labels
+    document.getElementById('navOrder').textContent  = t.newOrder;
+    document.getElementById('navOrders').textContent = t.orders;
     // Reload orders view in new language if active
     if (currentView === 'orders') loadOrders();
   }
@@ -350,6 +353,7 @@
       <div class="rv-stat"><div class="s-label">${t.statLabels.preparing}</div><div class="s-value" style="color:#1A6B7C">${preparing.length}</div></div>
       <div class="rv-stat"><div class="s-label">${t.statLabels.ready}</div><div class="s-value" style="color:#22c55e">${ready.length}</div></div>
       <div class="rv-stat"><div class="s-label">${t.statLabels.delivered}</div><div class="s-value" style="color:#9ca3af">${delivered.length}</div></div>
+      <div class="rv-stat"><div class="s-label">${t.statLabels.cancelled}</div><div class="s-value" style="color:#ef4444">${cancelled.length}</div></div>
     `;
 
     if (!orders.length) {
@@ -382,6 +386,19 @@
     });
   }
 
+  // Build name lookup from menu DOM (data-id -> {en, gr})
+  const menuNameMap = {};
+  document.querySelectorAll('.cat-item[data-id]').forEach(el => {
+    menuNameMap[el.dataset.id] = { en: el.dataset.name, gr: el.dataset.nameGr || el.dataset.name };
+  });
+
+  function getItemName(item) {
+    const lang = currentLang;
+    if (lang === 'gr' && menuNameMap[item.id]) return menuNameMap[item.id].gr;
+    if (menuNameMap[item.id]) return menuNameMap[item.id].en;
+    return item.name;
+  }
+
   function orderCard(o, t) {
     const payText = o.payment === 'cash' ? t.cash : t.card;
     const waiter  = o.source === 'waiter' && o.waiter_name
@@ -389,7 +406,7 @@
       : '';
     const statusLabel = t.statuses[o.status] || o.status;
     const items = (o.order_items || []).map(i =>
-      `<div class="rv-item"><span>${i.qty}x ${i.name}</span><span>€${(i.price * i.qty).toFixed(2)}</span></div>`
+      `<div class="rv-item"><span>${i.qty}x ${getItemName(i)}</span><span>€${(i.price * i.qty).toFixed(2)}</span></div>`
     ).join('');
     return `
     <div class="rv-card ${o.status}">
