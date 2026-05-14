@@ -260,7 +260,7 @@
       tableLabel: 'Select Table', payLabel: 'Payment method', cash: '💵 Cash', card: '💳 Card',
       orderBtn: 'Order now →', item: 'item', items: 'items', unavailable: 'Unavailable',
       successTitle: 'Order placed!', successMsg: 'Order sent to kitchen.', sending: 'Sending...',
-      noOrders: 'No orders yet.', total: 'Total', signOut: 'Sign out', newOrder: 'NEW ORDER', orders: 'ORDERS',
+      noOrders: 'No orders yet.', total: 'Total', signOut: 'Sign out', newOrder: 'NEW ORDER', orders: 'ORDERS', completed: 'Completed',
       statLabels: { pending:'Pending', preparing:'Preparing', ready:'Ready', delivered:'Delivered', cancelled:'Cancelled' },
       statuses:   { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
     },
@@ -268,7 +268,7 @@
       tableLabel: 'Επιλογή Τραπεζιού', payLabel: 'Τρόπος πληρωμής', cash: '💵 Μετρητά', card: '💳 Κάρτα',
       orderBtn: 'Παραγγελία →', item: 'προϊόν', items: 'προϊόντα', unavailable: 'Μη διαθέσιμο',
       successTitle: 'Η παραγγελία στάλθηκε!', successMsg: 'Η παραγγελία στάλθηκε στην κουζίνα.', sending: 'Αποστολή...',
-      noOrders: 'Δεν υπάρχουν παραγγελίες ακόμα.', total: 'Σύνολο', signOut: 'Αποσύνδεση', newOrder: 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ', orders: 'ΠΑΡΑΓΓΕΛΙΕΣ',
+      noOrders: 'Δεν υπάρχουν παραγγελίες ακόμα.', total: 'Σύνολο', signOut: 'Αποσύνδεση', newOrder: 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ', orders: 'ΠΑΡΑΓΓΕΛΙΕΣ', completed: 'Ολοκληρωμένες',
       statLabels: { pending:'Εκκρεμείς', preparing:'Προετοιμασία', ready:'Έτοιμα', delivered:'Παραδόθηκαν', cancelled:'Ακυρώθηκαν' },
       statuses:   { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
     }
@@ -359,28 +359,46 @@
       return;
     }
 
-    let html = '';
-    const active = [...pending, ...preparing, ...ready];
-    active.forEach(o => { html += orderCard(o, t); });
+    // Group by table
+    const tableMap = {};
+    orders.forEach(o => {
+      if (!tableMap[o.table_id]) tableMap[o.table_id] = [];
+      tableMap[o.table_id].push(o);
+    });
+    const tables = Object.keys(tableMap).sort();
 
-    if (delivered.length) {
-      html += `<div class="rv-section">${t.statLabels.delivered}</div>`;
-      delivered.forEach(o => { html += orderCard(o, t); });
-    }
-    if (cancelled.length) {
-      html += `<div class="rv-section" style="color:#ef4444;">${t.statLabels.cancelled}</div>`;
-      cancelled.forEach(o => { html += orderCard(o, t); });
-    }
-    if (!active.length && !delivered.length && !cancelled.length) {
-      html = `<div class="rv-empty">🏖️ ${t.noOrders}</div>`;
-    }
+    let html = '<div class="rv-board">';
+    tables.forEach(table => {
+      const tableOrders = tableMap[table];
+      const active = tableOrders.filter(o => ['pending','preparing','ready'].includes(o.status));
+      const done   = tableOrders.filter(o => ['delivered','cancelled'].includes(o.status));
+
+      html += `<div class="rv-col">
+        <div class="rv-col-header">
+          <span class="rv-col-title">${table}</span>
+          <span class="rv-col-count">${active.length}</span>
+        </div>
+        <div class="rv-col-body">`;
+
+      if (!tableOrders.length) {
+        html += `<div class="rv-col-empty">${t.noOrders}</div>`;
+      }
+      active.forEach(o => { html += orderCard(o, t); });
+      if (done.length) {
+        html += `<div class="rv-done-label">${t.completed || 'Completed'}</div>`;
+        done.forEach(o => { html += orderCard(o, t); });
+      }
+      html += '</div></div>';
+    });
+    html += '</div>';
 
     document.getElementById('rvContent').innerHTML = html;
 
     // Local time
     document.querySelectorAll('.rv-time[data-iso]').forEach(el => {
       const d = new Date(el.dataset.iso);
-      el.textContent = d.toLocaleDateString([], { day:'2-digit', month:'2-digit' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      el.textContent = d.toLocaleDateString([], {day:'2-digit',month:'2-digit'}) + ' ' +
+                       d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
     });
   }
 

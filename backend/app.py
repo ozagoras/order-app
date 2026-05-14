@@ -369,9 +369,18 @@ def admin_dashboard():
     delivered_count = sum(1 for o in orders if o["status"] == "delivered")
     cancelled_count = sum(1 for o in orders if o["status"] == "cancelled")
 
+    # Group orders by table for kanban view
+    from collections import defaultdict
+    tables_map = defaultdict(list)
+    for o in orders:
+        tables_map[o["table_id"]].append(o)
+    tables = sorted(tables_map.keys())
+
     return render_template(
         "admin.html",
         orders=orders,
+        tables=tables,
+        tables_map=dict(tables_map),
         pending_count=pending_count,
         preparing_count=preparing_count,
         ready_count=ready_count,

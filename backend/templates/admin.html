@@ -5,116 +5,132 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin — Beach Bar</title>
   <script>
-    // Only refresh when tab is visible — stops keeping session alive when tab is hidden
-    setInterval(() => {
-      if (!document.hidden) {
-        location.reload();
-      }
-    }, 10000);
+    setInterval(() => { if (!document.hidden) location.reload(); }, 10000);
   </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
     :root {
-      --ocean: #1A6B7C;
-      --sun:   #F4A825;
-      --coral: #E8603A;
-      --dark:  #1C2B2D;
-      --bg:    #F5F7F7;
+      --ocean: #1A6B7C; --sun: #F4A825; --coral: #E8603A;
+      --dark:  #1C2B2D; --bg:  #F0F4F5;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); min-height: 100vh; }
 
-    nav {
-      background: var(--dark);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    nav .brand { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--sun); }
+    /* Nav */
+    nav { background: var(--dark); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--sun); }
     nav a { font-size: 13px; color: rgba(255,255,255,0.5); text-decoration: none; }
     nav a:hover { color: #fff; }
     .lang-toggle { display: flex; gap: 4px; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 3px; }
     .lang-btn { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 16px; border: none; cursor: pointer; background: transparent; color: rgba(255,255,255,0.5); font-family: 'Syne', sans-serif; transition: all 0.2s; }
     .lang-btn.active { background: #fff; color: var(--dark); }
 
-    .page-header {
-      padding: 28px 24px 16px;
+    /* Page header */
+    .page-header { padding: 20px 24px 12px; display: flex; align-items: center; justify-content: space-between; }
+    .page-header h1 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--dark); }
+
+    /* Stats */
+    .stats { display: flex; gap: 10px; padding: 0 24px 16px; flex-wrap: wrap; }
+    .stat { background: #fff; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); min-width: 90px; }
+    .stat .label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat .value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; }
+
+    /* Table grid */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 0 24px 40px;
+    }
+
+    /* Table column */
+    .table-col {
+      background: #E8EDEF;
+      border-radius: 16px;
+      overflow: hidden;
+      min-height: 120px;
+    }
+    .col-header {
+      padding: 14px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background: var(--dark);
+      position: sticky;
+      top: 0;
     }
-    .page-header h1 { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--dark); }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 12px;
-      padding: 0 24px 20px;
-    }
-    .stat { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-    .stat .label { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .stat .value { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--dark); }
-
-    .orders { padding: 0 24px 40px; }
-    .section-label {
+    .col-title {
       font-family: 'Syne', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--ocean);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin: 16px 0 10px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.5px;
     }
+    .col-count {
+      background: var(--sun);
+      color: var(--dark);
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .col-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .col-empty { padding: 24px 16px; text-align: center; color: #aaa; font-size: 13px; }
 
+    /* Order card */
     .order-card {
       background: #fff;
-      border-radius: 16px;
-      padding: 18px 20px;
-      margin-bottom: 12px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.05);
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      border-left: 4px solid transparent;
+      transition: transform 0.15s;
     }
-    .order-card.pending   { border-left: 4px solid var(--sun); }
-    .order-card.preparing { border-left: 4px solid var(--ocean); }
-    .order-card.ready     { border-left: 4px solid #22c55e; }
-    .order-card.delivered  { border-left: 4px solid #d1d5db; opacity: 0.6; }
-    .order-card.cancelled  { border-left: 4px solid #ef4444; opacity: 0.6; }
+    .order-card:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
+    .order-card.pending   { border-left-color: var(--sun); }
+    .order-card.preparing { border-left-color: var(--ocean); }
+    .order-card.ready     { border-left-color: #22c55e; }
+    .order-card.delivered { border-left-color: #d1d5db; opacity: 0.55; }
+    .order-card.cancelled { border-left-color: #ef4444; opacity: 0.55; }
 
-    .order-main { flex: 1; min-width: 0; }
-    .order-top  { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
-    .order-table { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: var(--dark); }
-    .order-time  { font-size: 11px; color: #aaa; margin-left: auto; }
-    .order-id    { font-size: 10px; color: #ccc; font-family: monospace; margin-bottom: 10px; }
-
-    .status-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; text-transform: capitalize; }
+    .card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .status-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
     .status-badge.pending   { background: #FEF3C7; color: #92400E; }
     .status-badge.preparing { background: #DBEAFE; color: #1E40AF; }
     .status-badge.ready     { background: #D1FAE5; color: #065F46; }
-    .status-badge.delivered  { background: #F3F4F6; color: #6B7280; }
-    .status-badge.cancelled  { background: #FEE2E2; color: #991B1B; }
+    .status-badge.delivered { background: #F3F4F6; color: #6B7280; }
+    .status-badge.cancelled { background: #FEE2E2; color: #991B1B; }
 
-    .order-item { display: flex; justify-content: space-between; font-size: 13px; color: #444; padding: 2px 0; }
-    .order-item .item-name  { color: var(--dark); font-weight: 500; }
-    .order-item .item-price { color: #888; }
-    .order-total { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--ocean); border-top: 1px solid #f0f0f0; padding-top: 8px; margin-top: 6px; }
+    .card-time { font-size: 10px; color: #aaa; margin-left: auto; }
+    .card-id   { font-size: 9px; color: #ddd; font-family: monospace; margin-bottom: 8px; }
 
-    .status-actions { display: flex; flex-direction: column; gap: 6px; min-width: 110px; }
-    .status-btn {
-      font-size: 12px; font-weight: 600; padding: 7px 12px;
-      border: none; border-radius: 8px; cursor: pointer;
-      font-family: 'DM Sans', sans-serif; transition: opacity 0.2s; text-align: center; width: 100%;
+    .card-item { display: flex; justify-content: space-between; font-size: 12px; color: #555; padding: 2px 0; }
+    .card-item .iname { color: var(--dark); font-weight: 500; }
+    .card-item .iprice { color: #888; }
+
+    .card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0f0f0; padding-top: 8px; margin-top: 6px; }
+    .card-total { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ocean); }
+    .card-pay   { font-size: 11px; color: #888; }
+    .waiter-tag { font-size: 10px; background: var(--ocean); color: #fff; padding: 1px 6px; border-radius: 8px; }
+
+    /* Action buttons */
+    .card-actions { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+    .act-btn {
+      flex: 1; font-size: 11px; font-weight: 600; padding: 5px 8px;
+      border: none; border-radius: 7px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; transition: opacity 0.2s; text-align: center;
+      min-width: 60px;
     }
-    .status-btn:hover { opacity: 0.8; }
+    .act-btn:hover { opacity: 0.8; }
     .btn-preparing { background: #DBEAFE; color: #1E40AF; }
     .btn-ready     { background: #D1FAE5; color: #065F46; }
     .btn-delivered { background: #F3F4F6; color: #6B7280; }
     .btn-cancelled { background: #FEE2E2; color: #991B1B; }
 
-    .empty { text-align: center; padding: 60px 20px; color: #aaa; font-size: 15px; }
-    .empty .icon { font-size: 48px; margin-bottom: 12px; }
+    /* Empty state */
+    .empty-board { text-align: center; padding: 60px 20px; color: #aaa; }
+    .empty-board .icon { font-size: 48px; margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -158,189 +174,139 @@
   </div>
 </div>
 
-<div class="orders">
-
-  {% if not orders %}
-  <div class="empty">
-    <div class="icon">🏖️</div>
-    No orders yet — waiting for customers to tap!
-  </div>
-
-  {% else %}
-
-  <!-- Active orders -->
-  {% for order in orders %}
-  {% if order.status not in ['delivered', 'cancelled'] %}
-  <div class="order-card {{ order.status }}">
-    <div class="order-main">
-      <div class="order-top">
-        <div class="order-table">{{ order.table_id }}</div>
-        <span class="status-badge {{ order.status }}">{{ order.status }}</span>
-        <span style="font-size:12px;"><span class='pay-text' data-type='{{ order.payment }}'>{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></span>
-        {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 {{ order.waiter_name }}</span>{% endif %}
-        <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
-      </div>
-      <div class="order-id">{{ order.short_id }}</div>
-
-      {% for item in order.order_items %}
-      <div class="order-item">
-        <span class="item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
-        <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
-      </div>
-      {% endfor %}
-
-      <div class="order-total"><span class='total-label'>Total:</span> €{{ "%.2f"|format(order.total) }}</div>
-    </div>
-
-    <div class="status-actions">
-      {% if order.status == 'pending' %}
-      <form method="POST" action="/admin/order/{{ order.id }}/status">
-        <input type="hidden" name="status" value="preparing">
-        <button type="submit" class="status-btn btn-preparing">▶ Preparing</button>
-      </form>
-      {% endif %}
-      {% if order.status in ['pending', 'preparing'] %}
-      <form method="POST" action="/admin/order/{{ order.id }}/status">
-        <input type="hidden" name="status" value="ready">
-        <button type="submit" class="status-btn btn-ready">✓ Ready</button>
-      </form>
-      {% endif %}
-      <form method="POST" action="/admin/order/{{ order.id }}/status">
-        <input type="hidden" name="status" value="delivered">
-        <button type="submit" class="status-btn btn-delivered">✓ Delivered</button>
-      </form>
-      <form method="POST" action="/admin/order/{{ order.id }}/status">
-        <input type="hidden" name="status" value="cancelled">
-        <button type="submit" class="status-btn btn-cancelled">✕ Cancel</button>
-      </form>
-    </div>
-  </div>
-  {% endif %}
-  {% endfor %}
-
-  <!-- Delivered -->
-  {% set has_delivered = [] %}
-  {% for order in orders %}{% if order.status == 'delivered' %}{% set _ = has_delivered.append(1) %}{% endif %}{% endfor %}
-
-  {% if has_delivered %}
-  <div class="section-label" data-en="Delivered" data-gr="Παραδόθηκαν">Delivered</div>
-  {% for order in orders %}
-  {% if order.status == 'delivered' %}
-  <div class="order-card delivered">
-    <div class="order-main">
-      <div class="order-top">
-        <div class="order-table">{{ order.table_id }}</div>
-        <span class="status-badge delivered">delivered</span>
-        <span style="font-size:12px;"><span class='pay-text' data-type='{{ order.payment }}'>{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></span>
-        {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 {{ order.waiter_name }}</span>{% endif %}
-        <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
-      </div>
-      <div class="order-id">{{ order.short_id }}</div>
-      {% for item in order.order_items %}
-      <div class="order-item">
-        <span class="item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
-        <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
-      </div>
-      {% endfor %}
-      <div class="order-total"><span class='total-label'>Total:</span> €{{ "%.2f"|format(order.total) }}</div>
-    </div>
-  </div>
-  {% endif %}
-  {% endfor %}
-  {% endif %}
-
-  <!-- Cancelled orders -->
-  {% set has_cancelled = [] %}
-  {% for order in orders %}{% if order.status == 'cancelled' %}{% set _ = has_cancelled.append(1) %}{% endif %}{% endfor %}
-
-  {% if has_cancelled %}
-  <div class="section-label" data-en="Cancelled" data-gr="Ακυρώθηκαν" style="color:#991B1B;">Cancelled</div>
-  {% for order in orders %}
-  {% if order.status == 'cancelled' %}
-  <div class="order-card cancelled">
-    <div class="order-main">
-      <div class="order-top">
-        <div class="order-table">{{ order.table_id }}</div>
-        <span class="status-badge cancelled">cancelled</span>
-        <span style="font-size:12px;"><span class='pay-text' data-type='{{ order.payment }}'>{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></span>
-        {% if order.source == 'waiter' %}<span style="font-size:12px; background:#1A6B7C; color:#fff; padding:2px 8px; border-radius:10px;">👨‍🍳 {{ order.waiter_name }}</span>{% endif %}
-        <div class="order-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></div>
-      </div>
-      <div class="order-id">{{ order.short_id }}</div>
-      {% for item in order.order_items %}
-      <div class="order-item">
-        <span class="item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
-        <span class="item-price">€{{ "%.2f"|format(item.price * item.qty) }}</span>
-      </div>
-      {% endfor %}
-      <div class="order-total"><span class='total-label'>Total:</span> €{{ "%.2f"|format(order.total) }}</div>
-    </div>
-  </div>
-  {% endif %}
-  {% endfor %}
-  {% endif %}
-
-  {% endif %}
-
+<!-- Kanban Board -->
+{% if not orders %}
+<div class="empty-board">
+  <div class="icon">🏖️</div>
+  <div id="emptyMsg">No orders yet — waiting for customers to tap!</div>
 </div>
+{% else %}
+<div class="board" id="board">
+  {% for table in tables %}
+  {% set table_orders = tables_map[table] %}
+  {% set active_orders = [] %}
+  {% set done_orders = [] %}
+  {% for o in table_orders %}
+    {% if o.status in ['pending','preparing','ready'] %}{% set _ = active_orders.append(o) %}
+    {% else %}{% set _ = done_orders.append(o) %}{% endif %}
+  {% endfor %}
+  <div class="table-col">
+    <div class="col-header">
+      <div class="col-title">{{ table }}</div>
+      <div class="col-count">{{ active_orders | length }}</div>
+    </div>
+    <div class="col-body">
+      {% if not active_orders and not done_orders %}
+      <div class="col-empty">No orders</div>
+      {% endif %}
+
+      {% for order in active_orders %}
+      <div class="order-card {{ order.status }}">
+        <div class="card-top">
+          <span class="status-badge {{ order.status }}">{{ order.status }}</span>
+          {% if order.source == 'waiter' %}
+          <span class="waiter-tag">👨‍🍳 {{ order.waiter_name }}</span>
+          {% endif %}
+          <span class="card-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></span>
+        </div>
+        <div class="card-id">{{ order.short_id }}</div>
+        {% for item in order.order_items %}
+        <div class="card-item">
+          <span class="iname item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
+          <span class="iprice">€{{ "%.2f"|format(item.price * item.qty) }}</span>
+        </div>
+        {% endfor %}
+        <div class="card-footer">
+          <div class="card-total">€{{ "%.2f"|format(order.total) }}</div>
+          <div class="card-pay"><span class="pay-text" data-type="{{ order.payment }}">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></div>
+        </div>
+        <div class="card-actions">
+          {% if order.status == 'pending' %}
+          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
+            <button type="submit" name="status" value="preparing" class="act-btn btn-preparing">▶ Preparing</button>
+          </form>
+          {% endif %}
+          {% if order.status in ['pending','preparing'] %}
+          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
+            <button type="submit" name="status" value="ready" class="act-btn btn-ready">✓ Ready</button>
+          </form>
+          {% endif %}
+          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
+            <button type="submit" name="status" value="delivered" class="act-btn btn-delivered">✓ Done</button>
+          </form>
+          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
+            <button type="submit" name="status" value="cancelled" class="act-btn btn-cancelled">✕</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if done_orders %}
+      <div style="font-size:10px;color:#bbb;text-align:center;padding:6px 0;text-transform:uppercase;letter-spacing:1px;" class="done-label" data-en="Completed" data-gr="Ολοκληρωμένες">Completed</div>
+      {% for order in done_orders %}
+      <div class="order-card {{ order.status }}">
+        <div class="card-top">
+          <span class="status-badge {{ order.status }}">{{ order.status }}</span>
+          {% if order.source == 'waiter' %}
+          <span class="waiter-tag">👨‍🍳 {{ order.waiter_name }}</span>
+          {% endif %}
+          <span class="card-time"><span class="local-time" data-iso="{{ order.iso_time }}"></span></span>
+        </div>
+        <div class="card-id">{{ order.short_id }}</div>
+        {% for item in order.order_items %}
+        <div class="card-item">
+          <span class="iname item-name" data-id="{{ item.id }}" data-qty="{{ item.qty }}" data-name-en="{{ item.name }}">{{ item.qty }}x {{ item.name }}</span>
+          <span class="iprice">€{{ "%.2f"|format(item.price * item.qty) }}</span>
+        </div>
+        {% endfor %}
+        <div class="card-footer">
+          <div class="card-total">€{{ "%.2f"|format(order.total) }}</div>
+          <div class="card-pay"><span class="pay-text" data-type="{{ order.payment }}">{{ '💵 Cash' if order.payment == 'cash' else '💳 Card' }}</span></div>
+        </div>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <script>
-  // ── Local time ──
-  document.querySelectorAll('.local-time').forEach(el => {
-    const iso = el.dataset.iso;
-    if (!iso) return;
-    const d = new Date(iso); el.textContent = d.toLocaleDateString([], { day:'2-digit', month:'2-digit' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  });
-
-  // ── Language ──
-  const i18n = {
-    en: {
-      pageTitle:    'Orders',
-      refresh:      'Auto-refreshes every 10s',
-      signOut:      'Sign out',
-      noOrders:     'No orders yet — waiting for customers to tap!',
-      delivered:    'Delivered',
-      cancelled:    'Cancelled',
-      total:        'Total',
-      cash:         '💵 Cash',
-      card:         '💳 Card',
-      preparing:    '▶ Preparing',
-      ready:        '✓ Ready',
-      deliver:      '✓ Delivered',
-      cancel:       '✕ Cancel',
-      statuses: { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
-    },
-    gr: {
-      pageTitle:    'Παραγγελίες',
-      refresh:      'Ανανέωση κάθε 10δλ',
-      signOut:      'Αποσύνδεση',
-      noOrders:     'Δεν υπάρχουν παραγγελίες ακόμα!',
-      delivered:    'Παραδόθηκαν',
-      cancelled:    'Ακυρώθηκαν',
-      total:        'Σύνολο',
-      cash:         '💵 Μετρητά',
-      card:         '💳 Κάρτα',
-      preparing:    '▶ Προετοιμασία',
-      ready:        '✓ Έτοιμο',
-      deliver:      '✓ Παραδόθηκε',
-      cancel:       '✕ Ακύρωση',
-      statuses: { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
-    }
-  };
-
   let currentLang = localStorage.getItem('adminLang') || 'en';
-
-  // Name map loaded via API to avoid Jinja2 escaping issues
   let nameMap = {};
-  fetch('/api/menu-names')
-    .then(r => r.json())
-    .then(data => { nameMap = data; })
-    .catch(() => {});
+  fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
+
+  // Local time
+  document.querySelectorAll('.local-time').forEach(el => {
+    const d = new Date(el.dataset.iso);
+    el.textContent = d.toLocaleDateString([], {day:'2-digit',month:'2-digit'}) + ' ' +
+                     d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  });
 
   function getItemName(id, fallback) {
     if (currentLang === 'gr' && nameMap[id]) return nameMap[id].gr;
     if (nameMap[id]) return nameMap[id].en;
     return fallback;
   }
+
+  const i18n = {
+    en: {
+      pageTitle: 'Orders', signOut: 'Sign out',
+      noOrders:  'No orders yet — waiting for customers to tap!',
+      cash: '💵 Cash', card: '💳 Card',
+      preparing: '▶ Preparing', ready: '✓ Ready', deliver: '✓ Done', cancel: '✕',
+      statuses: { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
+    },
+    gr: {
+      pageTitle: 'Παραγγελίες', signOut: 'Αποσύνδεση',
+      noOrders:  'Δεν υπάρχουν παραγγελίες ακόμα!',
+      cash: '💵 Μετρητά', card: '💳 Κάρτα',
+      preparing: '▶ Προετοιμασία', ready: '✓ Έτοιμο', deliver: '✓ Έγινε', cancel: '✕',
+      statuses: { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
+    }
+  };
 
   function setLang(lang) {
     currentLang = lang;
@@ -352,47 +318,24 @@
     document.getElementById('pageTitle').textContent   = t.pageTitle;
     document.getElementById('signOutLink').textContent = t.signOut;
 
-    // Stat labels
-    document.querySelectorAll('.label[data-en]').forEach(el => {
-      el.textContent = el.dataset[lang];
-    });
+    const emptyMsg = document.getElementById('emptyMsg');
+    if (emptyMsg) emptyMsg.textContent = t.noOrders;
 
-    // Section labels
-    document.querySelectorAll('.section-label[data-en]').forEach(el => {
-      el.textContent = el.dataset[lang];
-    });
-
-    // Status badges
+    document.querySelectorAll('.label[data-en]').forEach(el => { el.textContent = el.dataset[lang]; });
     document.querySelectorAll('.status-badge').forEach(el => {
-      const status = el.className.replace('status-badge', '').trim();
-      el.textContent = t.statuses[status] || status;
+      const s = [...el.classList].find(c => t.statuses[c]);
+      if (s) el.textContent = t.statuses[s];
     });
-
-    // Payment spans
     document.querySelectorAll('.pay-text').forEach(el => {
       el.textContent = el.dataset.type === 'cash' ? t.cash : t.card;
     });
-
-    // Total labels
-    document.querySelectorAll('.total-label').forEach(el => {
-      el.textContent = t.total + ':';
-    });
-
-    // Buttons
+    document.querySelectorAll('.done-label[data-en]').forEach(el => { el.textContent = el.dataset[lang]; });
     document.querySelectorAll('.btn-preparing').forEach(el => { el.textContent = t.preparing; });
     document.querySelectorAll('.btn-ready').forEach(el => { el.textContent = t.ready; });
     document.querySelectorAll('.btn-delivered').forEach(el => { el.textContent = t.deliver; });
     document.querySelectorAll('.btn-cancelled').forEach(el => { el.textContent = t.cancel; });
-
-    // Empty state
-    const empty = document.querySelector('.empty');
-    if (empty) empty.querySelector('div:last-child') && (empty.lastChild.textContent = t.noOrders);
-
-    // Translate item names in order cards
     document.querySelectorAll('.item-name[data-id]').forEach(el => {
-      const id  = el.dataset.id;
-      const qty = el.dataset.qty;
-      el.textContent = qty + 'x ' + getItemName(id, el.dataset.nameEn);
+      el.textContent = el.dataset.qty + 'x ' + getItemName(el.dataset.id, el.dataset.nameEn);
     });
   }
 
