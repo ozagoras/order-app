@@ -45,7 +45,6 @@
       justify-content: space-between;
     }
     .page-header h1 { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--dark); }
-    .refresh-note { font-size: 12px; color: #aaa; }
 
     .stats {
       display: grid;
@@ -133,7 +132,6 @@
 
 <div class="page-header">
   <h1 id="pageTitle">Orders</h1>
-  <div class="refresh-note" id="refreshNote">Auto-refreshes every 10s</div>
 </div>
 
 <!-- Stats -->
@@ -352,7 +350,6 @@
     document.getElementById('btnEn').classList.toggle('active', lang === 'en');
     document.getElementById('btnGr').classList.toggle('active', lang === 'gr');
     document.getElementById('pageTitle').textContent   = t.pageTitle;
-    document.getElementById('refreshNote').textContent = t.refresh;
     document.getElementById('signOutLink').textContent = t.signOut;
 
     // Stat labels
