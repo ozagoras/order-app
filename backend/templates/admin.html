@@ -290,7 +290,7 @@
   document.querySelectorAll('.local-time').forEach(el => {
     const iso = el.dataset.iso;
     if (!iso) return;
-    el.textContent = new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const d = new Date(iso); el.textContent = d.toLocaleDateString([], { day:'2-digit', month:'2-digit' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   });
 
   // ── Language ──
