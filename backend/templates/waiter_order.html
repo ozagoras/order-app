@@ -106,40 +106,41 @@
     .new-order-btn { margin-top: 20px; padding: 12px 24px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: 50px; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
 
     /* ── ORDERS VIEW ── */
-    .orders-header { padding: 20px 20px 8px; display: flex; justify-content: space-between; align-items: center; }
+    .orders-header { padding: 16px 16px 8px; display: flex; justify-content: space-between; align-items: center; }
     .orders-header h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--dark); }
 
     /* Stats */
-    .rv-stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; padding: 0 16px 16px; }
-    .rv-stat { background: #fff; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .rv-stats { display: flex; gap: 8px; padding: 0 16px 16px; flex-wrap: wrap; }
+    .rv-stat { background: #fff; border-radius: 12px; padding: 10px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); min-width: 70px; }
     .rv-stat .s-label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .rv-stat .s-value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; }
+    .rv-stat .s-value { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
 
-    .rv-section { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--ocean); text-transform: uppercase; letter-spacing: 1px; padding: 8px 16px 6px; }
-
-    .rv-card { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid transparent; }
+    /* Order cards — identical to admin */
+    .rv-card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid transparent; transition: transform 0.15s; }
+    .rv-card:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
     .rv-card.pending   { border-left-color: var(--sun); }
     .rv-card.preparing { border-left-color: var(--ocean); }
     .rv-card.ready     { border-left-color: #22c55e; }
     .rv-card.delivered { border-left-color: #d1d5db; opacity: 0.55; }
     .rv-card.cancelled { border-left-color: #ef4444; opacity: 0.55; }
-    .rv-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
-    .rv-card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0f0f0; padding-top: 6px; margin-top: 4px; }
-    .rv-pay { font-size: 11px; color: #888; }
+    .rv-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .rv-card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0f0f0; padding-top: 8px; margin-top: 6px; }
+    .rv-pay  { font-size: 11px; color: #888; }
+    .rv-item { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
     .rv-item .iname  { color: var(--dark); font-weight: 500; }
     .rv-item .iprice { color: #888; }
 
 
-    .rv-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
+    .rv-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
     .rv-badge.pending   { background: #FEF3C7; color: #92400E; }
     .rv-badge.preparing { background: #DBEAFE; color: #1E40AF; }
     .rv-badge.ready     { background: #D1FAE5; color: #065F46; }
     .rv-badge.delivered { background: #F3F4F6; color: #6B7280; }
     .rv-badge.cancelled { background: #FEE2E2; color: #991B1B; }
-    .rv-time { font-size: 10px; color: #aaa; margin-left: auto; }
+    .rv-time { font-size: 10px; color: #aaa; margin-left: auto; white-space: nowrap; }
     .rv-id   { font-size: 10px; color: #ccc; font-family: monospace; margin-bottom: 8px; }
     .rv-item { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
-    .rv-total { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--ocean); }
+    .rv-total { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ocean); }
     .rv-empty { text-align: center; padding: 60px 20px; color: #aaa; font-size: 15px; }
   </style>
 </head>
