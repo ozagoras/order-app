@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin — Beach Bar</title>
   <script>
-    setInterval(() => { if (!document.hidden) location.reload(); }, 10000);
+    setInterval(() => { if (!document.hidden) softRefresh(); }, 10000);
   </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
@@ -314,6 +314,103 @@
 <script>
   let currentLang   = localStorage.getItem('adminLang') || 'en';
   let currentFilter = sessionStorage.getItem('adminFilter') || 'all';
+
+  // ── Soft refresh — no page reload, no blink ──
+  async function softRefresh() {
+    try {
+      const res  = await fetch('/api/admin-orders');
+      const data = await res.json();
+      renderBoard(data.orders || []);
+    } catch (e) {}
+  }
+
+  function renderBoard(orders) {
+    // Update stats
+    const counts = { pending:0, preparing:0, ready:0, delivered:0, cancelled:0 };
+    orders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+    const statAll = document.getElementById('stat-all');
+    if (statAll) statAll.querySelector('.value').textContent = orders.length;
+    Object.keys(counts).forEach(s => {
+      const el = document.getElementById('stat-' + s);
+      if (el) el.querySelector('.value').textContent = counts[s];
+    });
+
+    // Group by table
+    const tableMap = {};
+    orders.forEach(o => {
+      if (!tableMap[o.table_id]) tableMap[o.table_id] = [];
+      tableMap[o.table_id].push(o);
+    });
+
+    // Update each existing column's cards
+    document.querySelectorAll('.table-col').forEach(col => {
+      const table  = col.querySelector('.col-title').textContent.trim();
+      const body   = col.querySelector('.col-body');
+      const count  = col.querySelector('.col-count');
+      const tOrders = tableMap[table] || [];
+      const active = tOrders.filter(o => ['pending','preparing','ready'].includes(o.status));
+      const done   = tOrders.filter(o => ['delivered','cancelled'].includes(o.status));
+
+      if (count) count.textContent = active.length;
+
+      // Rebuild body content
+      let html = '';
+      if (!tOrders.length) html = `<div class="col-empty">No orders</div>`;
+      active.forEach(o => { html += buildCard(o); });
+      if (done.length) {
+        html += `<div class="done-label" data-en="Completed" data-gr="Ολοκληρωμένες">Completed</div>`;
+        done.forEach(o => { html += buildCard(o); });
+      }
+      if (body) body.innerHTML = html;
+    });
+
+    // Local time
+    document.querySelectorAll('.local-time[data-iso]').forEach(el => {
+      const d = new Date(el.dataset.iso);
+      el.textContent = d.toLocaleDateString([],{day:'2-digit',month:'2-digit'}) + ' ' +
+                       d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+    });
+
+    // Re-apply lang and filter
+    setLang(currentLang);
+    if (currentFilter !== 'all') filterStatus(currentFilter);
+  }
+
+  function buildCard(o) {
+    const payText = o.payment === 'cash' ? '💵 Cash' : '💳 Card';
+    const waiter  = o.source === 'waiter' && o.waiter_name
+      ? `<span class="waiter-tag">👨‍🍳 ${o.waiter_name}</span>` : '';
+    const items = (o.order_items||[]).map(i =>
+      `<div class="card-item"><span class="iname item-name" data-id="${i.id}" data-qty="${i.qty}" data-name-en="${i.name}">${i.qty}x ${i.name}</span><span class="iprice">€${(i.price*i.qty).toFixed(2)}</span></div>`
+    ).join('');
+
+    let actions = '';
+    if (!['delivered','cancelled'].includes(o.status)) {
+      if (o.status === 'pending')
+        actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="preparing" class="act-btn btn-preparing">▶ Preparing</button></form>`;
+      if (['pending','preparing'].includes(o.status))
+        actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="ready" class="act-btn btn-ready">✓ Ready</button></form>`;
+      actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="delivered" class="act-btn btn-delivered">✓ Done</button></form>`;
+      actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="cancelled" class="act-btn btn-cancelled">✕</button></form>`;
+    }
+
+    return `<div class="order-card ${o.status}">
+      <div class="order-main">
+        <div class="card-top">
+          <span class="status-badge ${o.status}">${o.status}</span>
+          ${waiter}
+          <span class="card-time"><span class="local-time" data-iso="${o.iso_time}"></span></span>
+        </div>
+        <div class="card-id">${o.short_id}</div>
+        ${items}
+        <div class="card-footer">
+          <div class="card-total">€${o.total.toFixed(2)}</div>
+          <div class="card-pay"><span class="pay-text" data-type="${o.payment}">${payText}</span></div>
+        </div>
+        ${actions ? `<div class="card-actions">${actions}</div>` : ''}
+      </div>
+    </div>`;
+  }
   let nameMap = {};
   fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
 

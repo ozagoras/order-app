@@ -519,6 +519,35 @@ def waiter_place_order():
 # API ENDPOINTS
 # ===========================================================================
 
+@app.route("/api/admin-orders")
+@admin_required
+def api_admin_orders():
+    """Returns orders JSON for the admin dashboard soft refresh."""
+    raw_orders = get_all_orders()
+    orders = []
+    for o in raw_orders:
+        created_at = o.get("created_at")
+        if created_at and hasattr(created_at, "isoformat"):
+            iso_time = created_at.isoformat()
+        elif isinstance(created_at, str):
+            iso_time = created_at
+        else:
+            iso_time = ""
+        orders.append({
+            "id":          str(o["id"]),
+            "short_id":    str(o["id"])[:8].upper(),
+            "table_id":    o["table_id"],
+            "order_items": o["order_items"],
+            "status":      o["status"],
+            "total":       float(o["total"]),
+            "payment":     o.get("payment", "cash"),
+            "source":      o.get("source", "customer"),
+            "waiter_name": o.get("waiter_name") or "",
+            "iso_time":    iso_time,
+        })
+    return jsonify({"orders": orders})
+
+
 @app.route("/api/menu-names")
 def api_menu_names():
     """Returns a flat name map {id: {en, gr}} for client-side translation."""
