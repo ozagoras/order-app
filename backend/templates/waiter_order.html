@@ -560,6 +560,19 @@
 
     document.getElementById('rvContent').innerHTML = html;
 
+    // Restore open columns after reload
+    const _openCols = JSON.parse(sessionStorage.getItem('waiterOpenCols') || '[]');
+    document.querySelectorAll('.col-header').forEach(header => {
+      const title = header.querySelector('.rv-col-title, .col-title');
+      if (!title) return;
+      const table = title.textContent.trim();
+      if (_openCols.includes(table)) {
+        header.nextElementSibling.style.display = 'flex';
+        const chevron = header.querySelector('.col-chevron');
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+      }
+    });
+
     // Restore active filter after reload
     if (currentWaiterFilter !== 'all') filterOrders(currentWaiterFilter);
 

@@ -381,6 +381,17 @@
   }
 
   if (currentLang === 'gr') setLang('gr');
+  // Restore open columns after auto-refresh
+  const _openCols = JSON.parse(sessionStorage.getItem('adminOpenCols') || '[]');
+  document.querySelectorAll('.col-header').forEach(header => {
+    const table = header.querySelector('.col-title').textContent.trim();
+    if (_openCols.includes(table)) {
+      header.nextElementSibling.style.display = 'flex';
+      const chevron = header.querySelector('.col-chevron');
+      if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+  });
+
   // Restore filter after auto-refresh
   if (currentFilter !== 'all') filterStatus(currentFilter);
 
@@ -443,6 +454,16 @@
     const isOpen  = body.style.display !== 'none';
     body.style.display      = isOpen ? 'none' : 'flex';
     chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+    // Save state
+    const table = header.querySelector('.col-title').textContent.trim();
+    const openCols = JSON.parse(sessionStorage.getItem('adminOpenCols') || '[]');
+    if (isOpen) {
+      const idx = openCols.indexOf(table);
+      if (idx > -1) openCols.splice(idx, 1);
+    } else {
+      if (!openCols.includes(table)) openCols.push(table);
+    }
+    sessionStorage.setItem('adminOpenCols', JSON.stringify(openCols));
   }
 </script>
 </body>
