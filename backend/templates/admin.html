@@ -206,7 +206,7 @@
 <!-- Filter bar (hidden by default) -->
 <div id="filterBar" style="display:none; padding: 0 24px 12px; align-items:center; gap:12px;">
   <span id="filterLabel" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--dark);"></span>
-  <button onclick="filterStatus('all')" style="font-size:12px;padding:5px 14px;background:var(--dark);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;">← Back</button>
+  <button id="backBtn" onclick="filterStatus('all')" style="font-size:12px;padding:5px 14px;background:var(--dark);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;">← Back</button>
 </div>
 
 <!-- Kanban Board -->
@@ -312,7 +312,8 @@
 {% endif %}
 
 <script>
-  let currentLang = localStorage.getItem('adminLang') || 'en';
+  let currentLang   = localStorage.getItem('adminLang') || 'en';
+  let currentFilter = sessionStorage.getItem('adminFilter') || 'all';
   let nameMap = {};
   fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
 
@@ -355,6 +356,8 @@
     document.getElementById('btnGr').classList.toggle('active', lang === 'gr');
     document.getElementById('pageTitle').textContent   = t.pageTitle;
     document.getElementById('signOutLink').textContent = t.signOut;
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) backBtn.textContent = t.back;
 
     const emptyMsg = document.getElementById('emptyMsg');
     if (emptyMsg) emptyMsg.textContent = t.noOrders;
@@ -378,11 +381,12 @@
   }
 
   if (currentLang === 'gr') setLang('gr');
-
-  let currentFilter = 'all';
+  // Restore filter after auto-refresh
+  if (currentFilter !== 'all') filterStatus(currentFilter);
 
   function filterStatus(status) {
     currentFilter = status;
+    sessionStorage.setItem('adminFilter', status);
     const board     = document.getElementById('board');
     const emptyBoard = document.querySelector('.empty-board');
     const filterBar = document.getElementById('filterBar');
