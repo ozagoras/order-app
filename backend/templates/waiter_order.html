@@ -106,42 +106,109 @@
     .new-order-btn { margin-top: 20px; padding: 12px 24px; background: rgba(255,255,255,0.2); color: #fff; border: 2px solid rgba(255,255,255,0.5); border-radius: 50px; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
 
     /* ── ORDERS VIEW ── */
-    .orders-header { padding: 16px 16px 8px; display: flex; justify-content: space-between; align-items: center; }
-    .orders-header h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--dark); }
+/* Stats */
+    .stats { display: flex; gap: 10px; padding: 0 24px 16px; flex-wrap: wrap; }
+    .stat { background: #fff; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); min-width: 90px; }
+    .stat .label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat .value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; }
 
-    /* Stats */
-    .rv-stats { display: flex; gap: 8px; padding: 0 16px 16px; flex-wrap: wrap; }
-    .rv-stat { background: #fff; border-radius: 12px; padding: 10px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); min-width: 70px; }
-    .rv-stat .s-label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .rv-stat .s-value { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
+    /* Table grid */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 0 24px 40px;
+    }
 
-    /* Order cards — identical to admin */
-    .rv-card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid transparent; transition: transform 0.15s; }
-    .rv-card:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
-    .rv-card.pending   { border-left-color: var(--sun); }
-    .rv-card.preparing { border-left-color: var(--ocean); }
-    .rv-card.ready     { border-left-color: #22c55e; }
-    .rv-card.delivered { border-left-color: #d1d5db; opacity: 0.55; }
-    .rv-card.cancelled { border-left-color: #ef4444; opacity: 0.55; }
-    .rv-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-    .rv-card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0f0f0; padding-top: 8px; margin-top: 6px; }
-    .rv-pay  { font-size: 11px; color: #888; }
-    .rv-item { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
-    .rv-item .iname  { color: var(--dark); font-weight: 500; }
-    .rv-item .iprice { color: #888; }
+    /* Table column */
+    .table-col {
+      background: #E8EDEF;
+      border-radius: 16px;
+      overflow: hidden;
+      min-height: 120px;
+    }
+    .col-header {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--dark);
+      position: sticky;
+      top: 0;
+    }
+    .col-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+    .col-count {
+      background: var(--sun);
+      color: var(--dark);
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .col-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .col-empty { padding: 24px 16px; text-align: center; color: #aaa; font-size: 13px; }
 
+    /* Order card */
+    .order-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      border-left: 4px solid transparent;
+      transition: transform 0.15s;
+    }
+    .order-card:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
+    .order-card.pending   { border-left-color: var(--sun); }
+    .order-card.preparing { border-left-color: var(--ocean); }
+    .order-card.ready     { border-left-color: #22c55e; }
+    .order-card.delivered { border-left-color: #d1d5db; opacity: 0.55; }
+    .order-card.cancelled { border-left-color: #ef4444; opacity: 0.55; }
 
-    .rv-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
-    .rv-badge.pending   { background: #FEF3C7; color: #92400E; }
-    .rv-badge.preparing { background: #DBEAFE; color: #1E40AF; }
-    .rv-badge.ready     { background: #D1FAE5; color: #065F46; }
-    .rv-badge.delivered { background: #F3F4F6; color: #6B7280; }
-    .rv-badge.cancelled { background: #FEE2E2; color: #991B1B; }
-    .rv-time { font-size: 10px; color: #aaa; margin-left: auto; white-space: nowrap; }
-    .rv-id   { font-size: 10px; color: #ccc; font-family: monospace; margin-bottom: 8px; }
-    .rv-item { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
-    .rv-total { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ocean); }
-    .rv-empty { text-align: center; padding: 60px 20px; color: #aaa; font-size: 15px; }
+    .card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .status-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
+    .status-badge.pending   { background: #FEF3C7; color: #92400E; }
+    .status-badge.preparing { background: #DBEAFE; color: #1E40AF; }
+    .status-badge.ready     { background: #D1FAE5; color: #065F46; }
+    .status-badge.delivered { background: #F3F4F6; color: #6B7280; }
+    .status-badge.cancelled { background: #FEE2E2; color: #991B1B; }
+
+    .card-time { font-size: 10px; color: #aaa; margin-left: auto; }
+    .card-id   { font-size: 9px; color: #ddd; font-family: monospace; margin-bottom: 8px; }
+
+    .card-item { display: flex; justify-content: space-between; font-size: 12px; color: #555; padding: 2px 0; }
+    .card-item .iname { color: var(--dark); font-weight: 500; }
+    .card-item .iprice { color: #888; }
+
+    .card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0f0f0; padding-top: 8px; margin-top: 6px; }
+    .card-total { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ocean); }
+    .card-pay   { font-size: 11px; color: #888; }
+    .waiter-tag { font-size: 10px; background: var(--ocean); color: #fff; padding: 1px 6px; border-radius: 8px; }
+
+    /* Action buttons */
+    .card-actions { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+    .act-btn {
+      flex: 1; font-size: 11px; font-weight: 600; padding: 5px 8px;
+      border: none; border-radius: 7px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; transition: opacity 0.2s; text-align: center;
+      min-width: 60px;
+    }
+    .act-btn:hover { opacity: 0.8; }
+    .btn-preparing { background: #DBEAFE; color: #1E40AF; }
+    .btn-ready     { background: #D1FAE5; color: #065F46; }
+    .btn-delivered { background: #F3F4F6; color: #6B7280; }
+    .btn-cancelled { background: #FEE2E2; color: #991B1B; }
+
+    /* Empty state */
+    .empty-board { text-align: center; padding: 60px 20px; color: #aaa; }
+    .empty-board .icon { font-size: 48px; margin-bottom: 12px; }
+  
   </style>
 </head>
 <body>
@@ -246,7 +313,7 @@
   <div class="orders-header">
     <h2>Orders</h2>
   </div>
-  <div class="rv-stats" id="rvStats"></div>
+  <div class="stats" id="rvStats"></div>
   <div id="rvContent"><div class="rv-empty">Loading...</div></div>
 </div>
 
@@ -352,11 +419,11 @@
 
     // Stats
     document.getElementById('rvStats').innerHTML = `
-      <div class="rv-stat"><div class="s-label">${t.statLabels.pending}</div><div class="s-value" style="color:#F4A825">${pending.length}</div></div>
-      <div class="rv-stat"><div class="s-label">${t.statLabels.preparing}</div><div class="s-value" style="color:#1A6B7C">${preparing.length}</div></div>
-      <div class="rv-stat"><div class="s-label">${t.statLabels.ready}</div><div class="s-value" style="color:#22c55e">${ready.length}</div></div>
-      <div class="rv-stat"><div class="s-label">${t.statLabels.delivered}</div><div class="s-value" style="color:#9ca3af">${delivered.length}</div></div>
-      <div class="rv-stat"><div class="s-label">${t.statLabels.cancelled}</div><div class="s-value" style="color:#ef4444">${cancelled.length}</div></div>
+      <div class="stat"><div class="label">${t.statLabels.pending}</div><div class="value" style="color:#F4A825">${pending.length}</div></div>
+      <div class="stat"><div class="label">${t.statLabels.preparing}</div><div class="value" style="color:#1A6B7C">${preparing.length}</div></div>
+      <div class="stat"><div class="label">${t.statLabels.ready}</div><div class="value" style="color:#22c55e">${ready.length}</div></div>
+      <div class="stat"><div class="label">${t.statLabels.delivered}</div><div class="value" style="color:#9ca3af">${delivered.length}</div></div>
+      <div class="stat"><div class="label">${t.statLabels.cancelled}</div><div class="value" style="color:#ef4444">${cancelled.length}</div></div>
     `;
 
     if (!orders.length) {
@@ -372,25 +439,25 @@
     });
     const tables = Object.keys(tableMap).sort();
 
-    let html = '<div class="rv-board">';
+    let html = '<div class="board">';
     tables.forEach(table => {
       const tableOrders = tableMap[table];
       const active = tableOrders.filter(o => ['pending','preparing','ready'].includes(o.status));
       const done   = tableOrders.filter(o => ['delivered','cancelled'].includes(o.status));
 
-      html += `<div class="rv-col">
-        <div class="rv-col-header">
-          <span class="rv-col-title">${table}</span>
-          <span class="rv-col-count">${active.length}</span>
+      html += `<div class="table-col">
+        <div class="col-header">
+          <div class="col-title">${table}</div>
+          <div class="col-count">${active.length}</div>
         </div>
-        <div class="rv-col-body">`;
+        <div class="col-body">`;
 
       if (!tableOrders.length) {
-        html += `<div class="rv-col-empty">${t.noOrders}</div>`;
+        html += `<div class="col-empty">${t.noOrders}</div>`;
       }
       active.forEach(o => { html += orderCard(o, t); });
       if (done.length) {
-        html += `<div class="rv-done-label">${t.completed || 'Completed'}</div>`;
+        html += `<div style="font-size:10px;color:#bbb;text-align:center;padding:6px 0;text-transform:uppercase;letter-spacing:1px;">${t.completed || 'Completed'}</div>`;
         done.forEach(o => { html += orderCard(o, t); });
       }
       html += '</div></div>';
@@ -418,27 +485,29 @@
   }
 
   function orderCard(o, t) {
-    const payText     = o.payment === 'cash' ? t.cash : t.card;
-    const waiter      = o.source === 'waiter' && o.waiter_name
-      ? `<span style="font-size:10px;background:#1A6B7C;color:#fff;padding:1px 6px;border-radius:8px;">👨‍🍳 ${o.waiter_name}</span>`
+    const payText      = o.payment === 'cash' ? t.cash : t.card;
+    const waiterBadge  = o.source === 'waiter' && o.waiter_name
+      ? `<span class="waiter-tag">👨‍🍳 ${o.waiter_name}</span>`
       : '';
     const statusLabel = t.statuses[o.status] || o.status;
     const items = (o.order_items || []).map(i =>
-      `<div class="rv-item"><span class="iname">${i.qty}x ${getItemName(i)}</span><span class="iprice">€${(i.price * i.qty).toFixed(2)}</span></div>`
+      `<div class="card-item"><span class="iname">${i.qty}x ${getItemName(i)}</span><span class="iprice">€${(i.price * i.qty).toFixed(2)}</span></div>`
     ).join('');
 
     return `
-    <div class="rv-card ${o.status}">
-      <div class="rv-card-top">
-        <span class="rv-badge ${o.status}">${statusLabel}</span>
-        ${waiter}
-        <span class="rv-time" data-iso="${o.iso_time}"></span>
-      </div>
-      <div class="rv-id">${o.short_id}</div>
-      ${items}
-      <div class="rv-card-footer">
-        <span class="rv-total">${t.total}: €${o.total.toFixed(2)}</span>
-        <span class="rv-pay">${payText}</span>
+    <div class="order-card ${o.status}">
+      <div class="order-main">
+        <div class="card-top">
+          <span class="status-badge ${o.status}">${statusLabel}</span>
+          ${waiterBadge}
+          <span class="card-time"><span class="rv-time" data-iso="${o.iso_time}"></span></span>
+        </div>
+        <div class="card-id">${o.short_id}</div>
+        ${items}
+        <div class="card-footer">
+          <div class="card-total">${t.total}: €${o.total.toFixed(2)}</div>
+          <div class="card-pay">${payText}</div>
+        </div>
       </div>
     </div>`;
   }
