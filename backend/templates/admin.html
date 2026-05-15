@@ -31,7 +31,9 @@
 
     /* Stats */
     .stats { display: flex; gap: 10px; padding: 0 24px 16px; flex-wrap: wrap; }
-    .stat { background: #fff; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); min-width: 90px; }
+    .stat { background: #fff; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); min-width: 90px; transition: all 0.2s; }
+    .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .stat.active { outline: 2px solid var(--ocean); }
     .stat .label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .stat .value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; }
 
@@ -175,26 +177,36 @@
 
 <!-- Stats -->
 <div class="stats">
-  <div class="stat">
+  <div class="stat" onclick="filterStatus('all')" id="stat-all" style="cursor:pointer;" title="All orders">
+    <div class="label" data-en="All" data-gr="Όλες">All</div>
+    <div class="value" style="color:var(--dark)">{{ orders|length }}</div>
+  </div>
+  <div class="stat" onclick="filterStatus('pending')" id="stat-pending" style="cursor:pointer;">
     <div class="label" data-en="Pending"   data-gr="Εκκρεμείς">Pending</div>
     <div class="value" style="color:var(--sun)">{{ pending_count }}</div>
   </div>
-  <div class="stat">
+  <div class="stat" onclick="filterStatus('preparing')" id="stat-preparing" style="cursor:pointer;">
     <div class="label" data-en="Preparing" data-gr="Προετοιμασία">Preparing</div>
     <div class="value" style="color:var(--ocean)">{{ preparing_count }}</div>
   </div>
-  <div class="stat">
+  <div class="stat" onclick="filterStatus('ready')" id="stat-ready" style="cursor:pointer;">
     <div class="label" data-en="Ready"     data-gr="Έτοιμα">Ready</div>
     <div class="value" style="color:#22c55e">{{ ready_count }}</div>
   </div>
-  <div class="stat">
+  <div class="stat" onclick="filterStatus('delivered')" id="stat-delivered" style="cursor:pointer;">
     <div class="label" data-en="Delivered" data-gr="Παραδόθηκαν">Delivered</div>
     <div class="value" style="color:#9ca3af">{{ delivered_count }}</div>
   </div>
-  <div class="stat">
+  <div class="stat" onclick="filterStatus('cancelled')" id="stat-cancelled" style="cursor:pointer;">
     <div class="label" data-en="Cancelled" data-gr="Ακυρώθηκαν">Cancelled</div>
     <div class="value" style="color:#ef4444">{{ cancelled_count }}</div>
   </div>
+</div>
+
+<!-- Filter bar (hidden by default) -->
+<div id="filterBar" style="display:none; padding: 0 24px 12px; align-items:center; gap:12px;">
+  <span id="filterLabel" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--dark);"></span>
+  <button onclick="filterStatus('all')" style="font-size:12px;padding:5px 14px;background:var(--dark);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;">← Back</button>
 </div>
 
 <!-- Kanban Board -->
@@ -366,6 +378,60 @@
   }
 
   if (currentLang === 'gr') setLang('gr');
+
+  let currentFilter = 'all';
+
+  function filterStatus(status) {
+    currentFilter = status;
+    const board     = document.getElementById('board');
+    const emptyBoard = document.querySelector('.empty-board');
+    const filterBar = document.getElementById('filterBar');
+    const filterLabel = document.getElementById('filterLabel');
+
+    // Update active stat
+    document.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
+    const activeStat = document.getElementById('stat-' + status);
+    if (activeStat && status !== 'all') activeStat.classList.add('active');
+
+    if (status === 'all') {
+      filterBar.style.display = 'none';
+      // Restore all cards
+      document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
+      document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
+      document.querySelectorAll('.done-label').forEach(l => l.style.display = '');
+      return;
+    }
+
+    const t = i18n[currentLang];
+    const labels = { pending: t.statuses?.pending || 'pending', preparing: t.statuses?.preparing || 'preparing', ready: t.statuses?.ready || 'ready', delivered: t.statuses?.delivered || 'delivered', cancelled: t.statuses?.cancelled || 'cancelled' };
+    filterLabel.textContent = labels[status] || status;
+    filterBar.style.display = 'flex';
+
+    // Show/hide cards by status
+    document.querySelectorAll('.table-col').forEach(col => {
+      const cards = col.querySelectorAll('.order-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const show = card.classList.contains(status);
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      col.style.display = visible > 0 ? '' : 'none';
+
+      // Auto-expand column if it has matching cards
+      if (visible > 0) {
+        const body    = col.querySelector('.col-body');
+        const chevron = col.querySelector('.col-chevron');
+        if (body) body.style.display = 'flex';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+      }
+
+      // Hide done-label if filtering active statuses
+      col.querySelectorAll('.done-label').forEach(l => {
+        l.style.display = ['delivered','cancelled'].includes(status) ? '' : 'none';
+      });
+    });
+  }
 
   function toggleCol(header) {
     const body    = header.nextElementSibling;

@@ -345,6 +345,10 @@
     <h2>Orders</h2>
   </div>
   <div class="stats" id="rvStats"></div>
+  <div id="rvFilterBar" style="display:none;padding:0 16px 12px;align-items:center;gap:12px;">
+    <span id="rvFilterLabel" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--dark);"></span>
+    <button onclick="filterOrders('all')" style="font-size:12px;padding:5px 14px;background:var(--dark);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;">← Back</button>
+  </div>
   <div id="rvContent"><div class="rv-empty">Loading...</div></div>
 </div>
 
@@ -364,7 +368,7 @@
       orderBtn: 'Order now →', item: 'item', items: 'items', unavailable: 'Unavailable',
       successTitle: 'Order placed!', successMsg: 'Order sent to kitchen.', sending: 'Sending...',
       noOrders: 'No orders yet.', total: 'Total', signOut: 'Sign out', newOrder: 'NEW ORDER', orders: 'ORDERS', completed: 'Completed',
-      statLabels: { pending:'Pending', preparing:'Preparing', ready:'Ready', delivered:'Delivered', cancelled:'Cancelled' },
+      statLabels: { all:'All', pending:'Pending', preparing:'Preparing', ready:'Ready', delivered:'Delivered', cancelled:'Cancelled' },
       statuses:   { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
     },
     gr: {
@@ -372,7 +376,7 @@
       orderBtn: 'Παραγγελία →', item: 'προϊόν', items: 'προϊόντα', unavailable: 'Μη διαθέσιμο',
       successTitle: 'Η παραγγελία στάλθηκε!', successMsg: 'Η παραγγελία στάλθηκε στην κουζίνα.', sending: 'Αποστολή...',
       noOrders: 'Δεν υπάρχουν παραγγελίες ακόμα.', total: 'Σύνολο', signOut: 'Αποσύνδεση', newOrder: 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ', orders: 'ΠΑΡΑΓΓΕΛΙΕΣ', completed: 'Ολοκληρωμένες',
-      statLabels: { pending:'Εκκρεμείς', preparing:'Προετοιμασία', ready:'Έτοιμα', delivered:'Παραδόθηκαν', cancelled:'Ακυρώθηκαν' },
+      statLabels: { all:'Όλες', pending:'Εκκρεμείς', preparing:'Προετοιμασία', ready:'Έτοιμα', delivered:'Παραδόθηκαν', cancelled:'Ακυρώθηκαν' },
       statuses:   { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
     }
   };
@@ -429,6 +433,46 @@
   }
 
   // ── Orders loading ──
+  function filterOrders(status) {
+    document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
+    const filterBar   = document.getElementById('rvFilterBar');
+    const filterLabel = document.getElementById('rvFilterLabel');
+    const t = i18n[currentLang];
+
+    if (status === 'all') {
+      filterBar.style.display = 'none';
+      document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
+      document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
+      document.querySelectorAll('.done-label').forEach(l => l.style.display = '');
+      return;
+    }
+
+    const wstat = document.getElementById('wstat-' + status);
+    if (wstat) wstat.classList.add('active');
+    filterLabel.textContent = t.statuses[status] || status;
+    filterBar.style.display = 'flex';
+
+    document.querySelectorAll('.table-col').forEach(col => {
+      const cards = col.querySelectorAll('.order-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const show = card.classList.contains(status);
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      col.style.display = visible > 0 ? '' : 'none';
+      if (visible > 0) {
+        const body    = col.querySelector('.col-body');
+        const chevron = col.querySelector('.col-chevron');
+        if (body) body.style.display = 'flex';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+      }
+      col.querySelectorAll('.done-label').forEach(l => {
+        l.style.display = ['delivered','cancelled'].includes(status) ? '' : 'none';
+      });
+    });
+  }
+
   function toggleCol(header) {
     const body    = header.nextElementSibling;
     const chevron = header.querySelector('.col-chevron');
@@ -458,12 +502,15 @@
 
     // Stats
     document.getElementById('rvStats').innerHTML = `
-      <div class="stat"><div class="label">${t.statLabels.pending}</div><div class="value" style="color:#F4A825">${pending.length}</div></div>
-      <div class="stat"><div class="label">${t.statLabels.preparing}</div><div class="value" style="color:#1A6B7C">${preparing.length}</div></div>
-      <div class="stat"><div class="label">${t.statLabels.ready}</div><div class="value" style="color:#22c55e">${ready.length}</div></div>
-      <div class="stat"><div class="label">${t.statLabels.delivered}</div><div class="value" style="color:#9ca3af">${delivered.length}</div></div>
-      <div class="stat"><div class="label">${t.statLabels.cancelled}</div><div class="value" style="color:#ef4444">${cancelled.length}</div></div>
+      <div class="stat" onclick="filterOrders('all')" id="wstat-all" style="cursor:pointer;"><div class="label">${t.statLabels.all||'All'}</div><div class="value" style="color:var(--dark)">${orders.length}</div></div>
+      <div class="stat" onclick="filterOrders('pending')" id="wstat-pending" style="cursor:pointer;"><div class="label">${t.statLabels.pending}</div><div class="value" style="color:#F4A825">${pending.length}</div></div>
+      <div class="stat" onclick="filterOrders('preparing')" id="wstat-preparing" style="cursor:pointer;"><div class="label">${t.statLabels.preparing}</div><div class="value" style="color:#1A6B7C">${preparing.length}</div></div>
+      <div class="stat" onclick="filterOrders('ready')" id="wstat-ready" style="cursor:pointer;"><div class="label">${t.statLabels.ready}</div><div class="value" style="color:#22c55e">${ready.length}</div></div>
+      <div class="stat" onclick="filterOrders('delivered')" id="wstat-delivered" style="cursor:pointer;"><div class="label">${t.statLabels.delivered}</div><div class="value" style="color:#9ca3af">${delivered.length}</div></div>
+      <div class="stat" onclick="filterOrders('cancelled')" id="wstat-cancelled" style="cursor:pointer;"><div class="label">${t.statLabels.cancelled}</div><div class="value" style="color:#ef4444">${cancelled.length}</div></div>
     `;
+    // Render filter bar
+    document.getElementById('rvFilterBar').style.display = 'none';
 
     if (!orders.length) {
       document.getElementById('rvContent').innerHTML = `<div class="rv-empty">🏖️ ${t.noOrders}</div>`;
