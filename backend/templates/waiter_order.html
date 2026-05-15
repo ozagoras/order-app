@@ -429,6 +429,14 @@
   }
 
   // ── Orders loading ──
+  function toggleCol(header) {
+    const body    = header.nextElementSibling;
+    const chevron = header.querySelector('.col-chevron');
+    const isOpen  = body.style.display !== 'none';
+    body.style.display    = isOpen ? 'none' : 'flex';
+    chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+  }
+
   async function loadOrders() {
     try {
       const res  = await fetch('/waiter/orders');
@@ -477,11 +485,14 @@
       const done   = tableOrders.filter(o => ['delivered','cancelled'].includes(o.status));
 
       html += `<div class="table-col">
-        <div class="col-header">
+        <div class="col-header" onclick="toggleCol(this)" style="cursor:pointer;user-select:none;">
           <div class="col-title">${table}</div>
-          <div class="col-count">${active.length}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="col-count">${active.length}</div>
+            <span class="col-chevron" style="color:rgba(255,255,255,0.5);font-size:12px;transition:transform 0.2s;">▼</span>
+          </div>
         </div>
-        <div class="col-body">`;
+        <div class="col-body" style="display:none;">`;
 
       if (!tableOrders.length) {
         html += `<div class="col-empty">${t.noOrders}</div>`;
