@@ -214,11 +214,14 @@
     {% else %}{% set _ = done_orders.append(o) %}{% endif %}
   {% endfor %}
   <div class="table-col">
-    <div class="col-header">
+    <div class="col-header" onclick="toggleCol(this)" style="cursor:pointer;user-select:none;">
       <div class="col-title">{{ table }}</div>
-      <div class="col-count">{{ active_orders | length }}</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="col-count">{{ active_orders | length }}</div>
+        <span class="col-chevron" style="color:rgba(255,255,255,0.5);font-size:12px;transition:transform 0.2s;">▼</span>
+      </div>
     </div>
-    <div class="col-body">
+    <div class="col-body" style="display:none;">
       {% if not active_orders and not done_orders %}
       <div class="col-empty">No orders</div>
       {% endif %}
@@ -363,6 +366,14 @@
   }
 
   if (currentLang === 'gr') setLang('gr');
+
+  function toggleCol(header) {
+    const body    = header.nextElementSibling;
+    const chevron = header.querySelector('.col-chevron');
+    const isOpen  = body.style.display !== 'none';
+    body.style.display      = isOpen ? 'none' : 'flex';
+    chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+  }
 </script>
 </body>
 </html>
