@@ -117,25 +117,29 @@
 
     .rv-section { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--ocean); text-transform: uppercase; letter-spacing: 1px; padding: 8px 16px 6px; }
 
-    .rv-card { background: #fff; border-radius: 14px; padding: 14px 16px; margin: 0 16px 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.05); }
-    .rv-card.pending   { border-left: 4px solid var(--sun); }
-    .rv-card.preparing { border-left: 4px solid var(--ocean); }
-    .rv-card.ready     { border-left: 4px solid #22c55e; }
-    .rv-card.delivered { border-left: 4px solid #d1d5db; opacity: 0.6; }
-    .rv-card.cancelled { border-left: 4px solid #ef4444; opacity: 0.6; }
+    .rv-card { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid transparent; }
+    .rv-card.pending   { border-left-color: var(--sun); }
+    .rv-card.preparing { border-left-color: var(--ocean); }
+    .rv-card.ready     { border-left-color: #22c55e; }
+    .rv-card.delivered { border-left-color: #d1d5db; opacity: 0.55; }
+    .rv-card.cancelled { border-left-color: #ef4444; opacity: 0.55; }
+    .rv-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+    .rv-card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0f0f0; padding-top: 6px; margin-top: 4px; }
+    .rv-pay { font-size: 11px; color: #888; }
+    .rv-item .iname  { color: var(--dark); font-weight: 500; }
+    .rv-item .iprice { color: #888; }
 
-    .rv-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
-    .rv-table { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; color: var(--dark); }
+
     .rv-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; }
     .rv-badge.pending   { background: #FEF3C7; color: #92400E; }
     .rv-badge.preparing { background: #DBEAFE; color: #1E40AF; }
     .rv-badge.ready     { background: #D1FAE5; color: #065F46; }
     .rv-badge.delivered { background: #F3F4F6; color: #6B7280; }
     .rv-badge.cancelled { background: #FEE2E2; color: #991B1B; }
-    .rv-time { font-size: 11px; color: #aaa; margin-left: auto; }
+    .rv-time { font-size: 10px; color: #aaa; margin-left: auto; }
     .rv-id   { font-size: 10px; color: #ccc; font-family: monospace; margin-bottom: 8px; }
-    .rv-item { display: flex; justify-content: space-between; font-size: 13px; color: #444; padding: 2px 0; }
-    .rv-total { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ocean); border-top: 1px solid #f0f0f0; padding-top: 6px; margin-top: 4px; }
+    .rv-item { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+    .rv-total { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--ocean); }
     .rv-empty { text-align: center; padding: 60px 20px; color: #aaa; font-size: 15px; }
   </style>
 </head>
@@ -402,40 +406,39 @@
     });
   }
 
-  // Build name lookup from menu DOM (data-id -> {en, gr})
-  const menuNameMap = {};
-  document.querySelectorAll('.cat-item[data-id]').forEach(el => {
-    menuNameMap[el.dataset.id] = { en: el.dataset.name, gr: el.dataset.nameGr || el.dataset.name };
-  });
+  // Fetch name map from API for translations
+  let nameMap = {};
+  fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
 
   function getItemName(item) {
-    const lang = currentLang;
-    if (lang === 'gr' && menuNameMap[item.id]) return menuNameMap[item.id].gr;
-    if (menuNameMap[item.id]) return menuNameMap[item.id].en;
+    if (currentLang === 'gr' && nameMap[item.id]) return nameMap[item.id].gr;
+    if (nameMap[item.id]) return nameMap[item.id].en;
     return item.name;
   }
 
   function orderCard(o, t) {
-    const payText = o.payment === 'cash' ? t.cash : t.card;
-    const waiter  = o.source === 'waiter' && o.waiter_name
-      ? `<span style="font-size:11px;background:#1A6B7C;color:#fff;padding:1px 7px;border-radius:8px;">👨‍🍳 ${o.waiter_name}</span>`
+    const payText     = o.payment === 'cash' ? t.cash : t.card;
+    const waiter      = o.source === 'waiter' && o.waiter_name
+      ? `<span style="font-size:10px;background:#1A6B7C;color:#fff;padding:1px 6px;border-radius:8px;">👨‍🍳 ${o.waiter_name}</span>`
       : '';
     const statusLabel = t.statuses[o.status] || o.status;
     const items = (o.order_items || []).map(i =>
-      `<div class="rv-item"><span>${i.qty}x ${getItemName(i)}</span><span>€${(i.price * i.qty).toFixed(2)}</span></div>`
+      `<div class="rv-item"><span class="iname">${i.qty}x ${getItemName(i)}</span><span class="iprice">€${(i.price * i.qty).toFixed(2)}</span></div>`
     ).join('');
+
     return `
     <div class="rv-card ${o.status}">
-      <div class="rv-top">
-        <div class="rv-table">${o.table_id}</div>
+      <div class="rv-card-top">
         <span class="rv-badge ${o.status}">${statusLabel}</span>
-        <span style="font-size:12px;">${payText}</span>
         ${waiter}
-        <div class="rv-time" data-iso="${o.iso_time}"></div>
+        <span class="rv-time" data-iso="${o.iso_time}"></span>
       </div>
       <div class="rv-id">${o.short_id}</div>
       ${items}
-      <div class="rv-total">${t.total}: €${o.total.toFixed(2)}</div>
+      <div class="rv-card-footer">
+        <span class="rv-total">${t.total}: €${o.total.toFixed(2)}</span>
+        <span class="rv-pay">${payText}</span>
+      </div>
     </div>`;
   }
 
