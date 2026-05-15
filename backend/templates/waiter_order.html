@@ -209,6 +209,37 @@
     .empty-board { text-align: center; padding: 60px 20px; color: #aaa; }
     .empty-board .icon { font-size: 48px; margin-bottom: 12px; }
   
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 600px) {
+      .header { padding: 12px 16px 20px; }
+      .header h1 { font-size: 17px; }
+      .tab-nav-btn { font-size: 10px; padding: 3px 8px; }
+      .lang-btn { padding: 3px 8px; font-size: 11px; }
+      .logout-btn { font-size: 11px; padding: 3px 8px; }
+
+      .table-selector { padding: 12px 12px 0; }
+
+      .cat-block { margin: 12px 12px 0; }
+      .cat-title  { font-size: 13px; padding: 12px 14px 8px; }
+      .cat-item   { padding: 9px 14px; }
+      .item-name  { font-size: 13px; }
+
+      .payment-section { padding: 0 12px 10px; }
+
+      /* Orders view */
+      .orders-header { padding: 12px 12px 6px; }
+      .orders-header h2 { font-size: 17px; }
+
+      .stats { padding: 0 12px 12px; gap: 5px; flex-wrap: wrap; }
+      .stat  { padding: 8px 10px; min-width: 55px; }
+      .stat .value { font-size: 16px; }
+      .stat .label { font-size: 9px; }
+
+      .board { grid-template-columns: 1fr; padding: 0 12px 40px; gap: 12px; }
+      .col-header { padding: 11px 14px; }
+      .col-title  { font-size: 14px; }
+    }
   </style>
 </head>
 <body>

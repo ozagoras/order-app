@@ -131,13 +131,36 @@
     /* Empty state */
     .empty-board { text-align: center; padding: 60px 20px; color: #aaa; }
     .empty-board .icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 600px) {
+      nav { padding: 12px 16px; }
+      .brand { font-size: 15px; }
+      .lang-btn { padding: 3px 8px; font-size: 11px; }
+
+      .page-header { padding: 14px 16px 8px; }
+      .page-header h1 { font-size: 18px; }
+
+      .stats { padding: 0 16px 12px; gap: 6px; }
+      .stat  { padding: 10px 12px; min-width: 60px; }
+      .stat .value { font-size: 18px; }
+      .stat .label { font-size: 9px; }
+
+      .board { grid-template-columns: 1fr; padding: 0 16px 40px; gap: 14px; }
+
+      .col-header { padding: 12px 14px; }
+      .col-title  { font-size: 14px; }
+
+      .card-actions { flex-wrap: wrap; }
+      .act-btn { font-size: 11px; padding: 6px 8px; }
+    }
   </style>
 </head>
 <body>
 
 <nav>
   <div class="brand">🍹 Beach Bar Admin</div>
-  <div style="display:flex;align-items:center;gap:16px;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <div class="lang-toggle">
       <button class="lang-btn active" id="btnEn" onclick="setLang('en')">EN</button>
       <button class="lang-btn"        id="btnGr" onclick="setLang('gr')">ΕΛ</button>
