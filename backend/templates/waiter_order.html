@@ -344,7 +344,14 @@
   <div class="orders-header">
     <h2>Orders</h2>
   </div>
-  <div class="stats" id="rvStats"></div>
+  <div class="stats" id="rvStats">
+    <div class="stat" onclick="filterOrders('all')" id="wstat-all" style="cursor:pointer;"><div class="label">All</div><div class="value" style="color:var(--dark)">0</div></div>
+    <div class="stat" onclick="filterOrders('pending')" id="wstat-pending" style="cursor:pointer;"><div class="label">Pending</div><div class="value" style="color:#F4A825">0</div></div>
+    <div class="stat" onclick="filterOrders('preparing')" id="wstat-preparing" style="cursor:pointer;"><div class="label">Preparing</div><div class="value" style="color:#1A6B7C">0</div></div>
+    <div class="stat" onclick="filterOrders('ready')" id="wstat-ready" style="cursor:pointer;"><div class="label">Ready</div><div class="value" style="color:#22c55e">0</div></div>
+    <div class="stat" onclick="filterOrders('delivered')" id="wstat-delivered" style="cursor:pointer;"><div class="label">Delivered</div><div class="value" style="color:#9ca3af">0</div></div>
+    <div class="stat" onclick="filterOrders('cancelled')" id="wstat-cancelled" style="cursor:pointer;"><div class="label">Cancelled</div><div class="value" style="color:#ef4444">0</div></div>
+  </div>
 
   <div id="rvContent"><div class="rv-empty">Loading...</div></div>
 </div>
@@ -435,66 +442,41 @@
   }
 
   // ── Orders loading ──
+
+  // applyFilterW — pure filter no toggle (used by renderOrders)
+  function applyFilterW(status) {
+    if (status === 'all') {
+      document.querySelectorAll('#rvContent .order-card').forEach(c => c.style.display = '');
+      document.querySelectorAll('#rvContent .table-col').forEach(col => col.style.display = '');
+      document.querySelectorAll('#rvContent .done-label').forEach(l => l.style.display = '');
+      return;
+    }
+    document.querySelectorAll('#rvContent .table-col').forEach(col => {
+      const cards = col.querySelectorAll('.order-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const show = card.classList.contains(status);
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      col.style.display = visible > 0 ? '' : 'none';
+      col.querySelectorAll('.done-label').forEach(l => {
+        l.style.display = ['delivered','cancelled'].includes(status) ? '' : 'none';
+      });
+    });
+  }
+
+  // filterOrders — user click with toggle
   function filterOrders(status) {
-    // Toggle — clicking same filter again resets to all
     const newStatus = (status !== 'all' && status === currentWaiterFilter) ? 'all' : status;
     currentWaiterFilter = newStatus;
     sessionStorage.setItem('waiterFilter', newStatus);
-
-    // Update highlight
     document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
     if (newStatus !== 'all') {
       const el = document.getElementById('wstat-' + newStatus);
       if (el) el.classList.add('active');
     }
-
-    // Show/hide cards
-    if (newStatus === 'all') {
-      document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
-      document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
-      document.querySelectorAll('.done-label').forEach(l => l.style.display = '');
-      return;
-    }
-
-    document.querySelectorAll('.table-col').forEach(col => {
-      const cards = col.querySelectorAll('.order-card');
-      let visible = 0;
-      cards.forEach(card => {
-        const show = card.classList.contains(newStatus);
-        card.style.display = show ? '' : 'none';
-        if (show) visible++;
-      });
-      col.style.display = visible > 0 ? '' : 'none';
-      if (visible > 0) {
-        const body    = col.querySelector('.col-body');
-        const chevron = col.querySelector('.col-chevron');
-        if (body) body.style.display = 'flex';
-        if (chevron) chevron.style.transform = 'rotate(180deg)';
-      }
-      col.querySelectorAll('.done-label').forEach(l => {
-        l.style.display = ['delivered','cancelled'].includes(newStatus) ? '' : 'none';
-      });
-    });
-  }
-
-  function toggleCol(header) {
-    const body    = header.nextElementSibling;
-    const chevron = header.querySelector('.col-chevron');
-    const isOpen  = body.style.display !== 'none';
-    body.style.display      = isOpen ? 'none' : 'flex';
-    chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
-    // Save state
-    const titleEl = header.querySelector('.col-title, .rv-col-title');
-    if (!titleEl) return;
-    const table    = titleEl.textContent.trim();
-    const openCols = JSON.parse(sessionStorage.getItem('waiterOpenCols') || '[]');
-    if (isOpen) {
-      const idx = openCols.indexOf(table);
-      if (idx > -1) openCols.splice(idx, 1);
-    } else {
-      if (!openCols.includes(table)) openCols.push(table);
-    }
-    sessionStorage.setItem('waiterOpenCols', JSON.stringify(openCols));
+    applyFilterW(newStatus);
   }
 
   async function loadOrders() {
@@ -508,25 +490,17 @@
   }
 
   function renderOrders(orders) {
-    const pending   = orders.filter(o => o.status === 'pending');
-    const preparing = orders.filter(o => o.status === 'preparing');
-    const ready     = orders.filter(o => o.status === 'ready');
-    const delivered = orders.filter(o => o.status === 'delivered');
-    const cancelled = orders.filter(o => o.status === 'cancelled');
-
     const t = i18n[currentLang];
+    const counts = { pending:0, preparing:0, ready:0, delivered:0, cancelled:0 };
+    orders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
 
-    // Stats
-    document.getElementById('rvStats').innerHTML = `
-      <div class="stat" onclick="filterOrders('all')" id="wstat-all" style="cursor:pointer;"><div class="label">${t.statLabels.all||'All'}</div><div class="value" style="color:var(--dark)">${orders.length}</div></div>
-      <div class="stat" onclick="filterOrders('pending')" id="wstat-pending" style="cursor:pointer;"><div class="label">${t.statLabels.pending}</div><div class="value" style="color:#F4A825">${pending.length}</div></div>
-      <div class="stat" onclick="filterOrders('preparing')" id="wstat-preparing" style="cursor:pointer;"><div class="label">${t.statLabels.preparing}</div><div class="value" style="color:#1A6B7C">${preparing.length}</div></div>
-      <div class="stat" onclick="filterOrders('ready')" id="wstat-ready" style="cursor:pointer;"><div class="label">${t.statLabels.ready}</div><div class="value" style="color:#22c55e">${ready.length}</div></div>
-      <div class="stat" onclick="filterOrders('delivered')" id="wstat-delivered" style="cursor:pointer;"><div class="label">${t.statLabels.delivered}</div><div class="value" style="color:#9ca3af">${delivered.length}</div></div>
-      <div class="stat" onclick="filterOrders('cancelled')" id="wstat-cancelled" style="cursor:pointer;"><div class="label">${t.statLabels.cancelled}</div><div class="value" style="color:#ef4444">${cancelled.length}</div></div>
-    `;
-    // Render filter bar
-
+    // Update stats
+    const statAll = document.getElementById('wstat-all');
+    if (statAll) statAll.querySelector('.value').textContent = orders.length;
+    Object.keys(counts).forEach(s => {
+      const el = document.getElementById('wstat-' + s);
+      if (el) el.querySelector('.value').textContent = counts[s];
+    });
 
     if (!orders.length) {
       document.getElementById('rvContent').innerHTML = `<div class="rv-empty">🏖️ ${t.noOrders}</div>`;
@@ -543,9 +517,9 @@
 
     let html = '<div class="board">';
     tables.forEach(table => {
-      const tableOrders = tableMap[table];
-      const active = tableOrders.filter(o => ['pending','preparing','ready'].includes(o.status));
-      const done   = tableOrders.filter(o => ['delivered','cancelled'].includes(o.status));
+      const tOrders = tableMap[table];
+      const active  = tOrders.filter(o => ['pending','preparing','ready'].includes(o.status));
+      const done    = tOrders.filter(o => ['delivered','cancelled'].includes(o.status));
 
       html += `<div class="table-col">
         <div class="col-header" onclick="toggleCol(this)" style="cursor:pointer;user-select:none;">
@@ -557,13 +531,11 @@
         </div>
         <div class="col-body" style="display:none;">`;
 
-      if (!tableOrders.length) {
-        html += `<div class="col-empty">${t.noOrders}</div>`;
-      }
-      active.forEach(o => { html += orderCard(o, t); });
+      if (!tOrders.length) html += `<div class="col-empty">${t.noOrders}</div>`;
+      active.forEach(o => { html += buildWaiterCard(o, t); });
       if (done.length) {
-        html += `<div style="font-size:10px;color:#bbb;text-align:center;padding:6px 0;text-transform:uppercase;letter-spacing:1px;">${t.completed || 'Completed'}</div>`;
-        done.forEach(o => { html += orderCard(o, t); });
+        html += `<div class="done-label" data-en="Completed" data-gr="Ολοκληρωμένες">${t.completed||'Completed'}</div>`;
+        done.forEach(o => { html += buildWaiterCard(o, t); });
       }
       html += '</div></div>';
     });
@@ -572,21 +544,16 @@
     document.getElementById('rvContent').innerHTML = html;
 
     // Local time
-    document.querySelectorAll('.rv-time[data-iso]').forEach(el => {
+    document.querySelectorAll('#rvContent .local-time[data-iso]').forEach(el => {
       const d = new Date(el.dataset.iso);
-      el.textContent = d.toLocaleDateString([], {day:'2-digit',month:'2-digit'}) + ' ' +
-                       d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+      el.textContent = d.toLocaleDateString([],{day:'2-digit',month:'2-digit'}) + ' ' +
+                       d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
     });
 
-    // Restore active filter first
-    if (currentWaiterFilter !== 'all') filterOrders(currentWaiterFilter);
-
-    // Restore collapsed/expanded state AFTER filter (overrides filter's auto-expand)
+    // Restore collapsed state
     const _openCols = JSON.parse(sessionStorage.getItem('waiterOpenCols') || '[]');
-    document.querySelectorAll('.col-header').forEach(header => {
-      const titleEl = header.querySelector('.col-title, .rv-col-title');
-      if (!titleEl) return;
-      const table   = titleEl.textContent.trim();
+    document.querySelectorAll('#rvContent .col-header').forEach(header => {
+      const table   = header.querySelector('.col-title').textContent.trim();
       const body    = header.nextElementSibling;
       const chevron = header.querySelector('.col-chevron');
       if (_openCols.includes(table)) {
@@ -598,41 +565,38 @@
       }
     });
 
+    // Restore filter
+    if (currentWaiterFilter !== 'all') applyFilterW(currentWaiterFilter);
+
     // Restore active stat highlight
     document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
     if (currentWaiterFilter !== 'all') {
       const el = document.getElementById('wstat-' + currentWaiterFilter);
       if (el) el.classList.add('active');
     }
+
+    // Translate
+    setLang(currentLang);
   }
 
-  // Fetch name map from API for translations
-  let nameMap = {};
-  fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
-
-  function getItemName(item) {
-    if (currentLang === 'gr' && nameMap[item.id]) return nameMap[item.id].gr;
-    if (nameMap[item.id]) return nameMap[item.id].en;
-    return item.name;
-  }
-
-  function orderCard(o, t) {
-    const payText      = o.payment === 'cash' ? t.cash : t.card;
-    const waiterBadge  = o.source === 'waiter' && o.waiter_name
-      ? `<span class="waiter-tag">👨‍🍳 ${o.waiter_name}</span>`
-      : '';
+  function buildWaiterCard(o, t) {
+    const payText     = o.payment === 'cash' ? t.cash : t.card;
+    const waiterBadge = o.source === 'waiter' && o.waiter_name
+      ? `<span class="waiter-tag">👨‍🍳 ${o.waiter_name}</span>` : '';
     const statusLabel = t.statuses[o.status] || o.status;
-    const items = (o.order_items || []).map(i =>
-      `<div class="card-item"><span class="iname">${i.qty}x ${getItemName(i)}</span><span class="iprice">€${(i.price * i.qty).toFixed(2)}</span></div>`
+    const items = (o.order_items||[]).map(i =>
+      `<div class="card-item"><span class="iname">${i.qty}x ${getItemName(i)}</span><span class="iprice">€${(i.price*i.qty).toFixed(2)}</span></div>`
     ).join('');
 
-    return `
-    <div class="order-card ${o.status}">
+    // Waiter — read only, no action buttons
+    const actions = '';
+
+    return `<div class="order-card ${o.status}">
       <div class="order-main">
         <div class="card-top">
           <span class="status-badge ${o.status}">${statusLabel}</span>
           ${waiterBadge}
-          <span class="card-time"><span class="rv-time" data-iso="${o.iso_time}"></span></span>
+          <span class="card-time"><span class="local-time" data-iso="${o.iso_time}"></span></span>
         </div>
         <div class="card-id">${o.short_id}</div>
         ${items}
@@ -640,11 +604,26 @@
           <div class="card-total">${t.total}: €${o.total.toFixed(2)}</div>
           <div class="card-pay">${payText}</div>
         </div>
+        ${actions ? `<div class="card-actions">${actions}</div>` : ''}
       </div>
     </div>`;
   }
 
+  function toggleCol(header) {
+    const body    = header.nextElementSibling;
+    const chevron = header.querySelector('.col-chevron');
+    const isOpen  = body.style.display !== 'none';
+    body.style.display      = isOpen ? 'none' : 'flex';
+    chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+    const table    = header.querySelector('.col-title').textContent.trim();
+    const openCols = JSON.parse(sessionStorage.getItem('waiterOpenCols') || '[]');
+    if (isOpen) { const idx = openCols.indexOf(table); if (idx > -1) openCols.splice(idx, 1); }
+    else { if (!openCols.includes(table)) openCols.push(table); }
+    sessionStorage.setItem('waiterOpenCols', JSON.stringify(openCols));
+  }
+
   // ── Menu interaction ──
+
   function handleItemClick(el) {
     if (el.dataset.available === 'no') return;
     toggleItem(el);
