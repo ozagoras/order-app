@@ -50,7 +50,8 @@
       background: #E8EDEF;
       border-radius: 16px;
       overflow: hidden;
-      min-height: 120px;
+      min-height: 0;
+      align-self: start;
     }
     .col-header {
       padding: 14px 16px;
@@ -424,7 +425,7 @@
         <div class="card-id">${o.short_id}</div>
         ${items}
         <div class="card-footer">
-          <div class="card-total">€${o.total.toFixed(2)}</div>
+          <div class="card-total" id="ctotal-${o.id}"><span class="total-word">Total</span>: €${o.total.toFixed(2)}</div>
           <div class="card-pay"><span class="pay-text" data-type="${o.payment}">${payText}</span></div>
         </div>
         ${actions ? `<div class="card-actions">${actions}</div>` : ''}
@@ -456,14 +457,14 @@
     en: {
       pageTitle: 'Orders', signOut: 'Sign out',
       noOrders:  'No orders yet — waiting for customers to tap!',
-      cash: '💵 Cash', card: '💳 Card',
+      total: 'Total', cash: '💵 Cash', card: '💳 Card',
       preparing: '▶ Preparing', ready: '✓ Ready', deliver: '✓ Done', cancel: '✕',
       statuses: { pending:'pending', preparing:'preparing', ready:'ready', delivered:'delivered', cancelled:'cancelled' },
     },
     gr: {
       pageTitle: 'Παραγγελίες', signOut: 'Αποσύνδεση',
       noOrders:  'Δεν υπάρχουν παραγγελίες ακόμα!',
-      cash: '💵 Μετρητά', card: '💳 Κάρτα',
+      total: 'Σύνολο', cash: '💵 Μετρητά', card: '💳 Κάρτα',
       preparing: '▶ Προετοιμασία', ready: '✓ Έτοιμο', deliver: '✓ Έγινε', cancel: '✕',
       statuses: { pending:'εκκρεμεί', preparing:'προετοιμασία', ready:'έτοιμο', delivered:'παραδόθηκε', cancelled:'ακυρώθηκε' },
     }
@@ -495,6 +496,7 @@
     document.querySelectorAll('.btn-ready').forEach(el => { el.textContent = t.ready; });
     document.querySelectorAll('.btn-delivered').forEach(el => { el.textContent = t.deliver; });
     document.querySelectorAll('.btn-cancelled').forEach(el => { el.textContent = t.cancel; });
+    document.querySelectorAll('.total-word').forEach(el => { el.textContent = t.total || 'Total'; });
     document.querySelectorAll('.item-name[data-id]').forEach(el => {
       el.textContent = el.dataset.qty + 'x ' + getItemName(el.dataset.id, el.dataset.nameEn);
     });

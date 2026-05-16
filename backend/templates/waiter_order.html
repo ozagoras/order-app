@@ -185,7 +185,8 @@
       background: #E8EDEF;
       border-radius: 16px;
       overflow: hidden;
-      min-height: 120px;
+      min-height: 0;
+      align-self: start;
     }
     .col-header {
       padding: 14px 16px;
@@ -440,7 +441,16 @@
 <!-- Top nav -->
 
 <script>
-  const cart = {};
+// Preload name map synchronously — must be first
+  let nameMap = {};
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/menu-names', false);
+    xhr.send();
+    if (xhr.status === 200) nameMap = JSON.parse(xhr.responseText);
+  } catch(e) {}
+
+    const cart = {};
   let paymentMethod    = null;
   let currentLang      = localStorage.getItem('lang') || 'en';
   const savedView      = sessionStorage.getItem('waiterView') || 'order';
@@ -498,6 +508,25 @@
       if (s) el.textContent = t.statuses[s];
     });
     document.querySelectorAll('#rvContent .done-label[data-en]').forEach(el => { el.textContent = el.dataset[lang]; });
+    // Translate stat labels
+    const statKeys = { 'wstat-all':'all', 'wstat-pending':'pending', 'wstat-preparing':'preparing',
+                       'wstat-ready':'ready', 'wstat-delivered':'delivered', 'wstat-cancelled':'cancelled' };
+    Object.entries(statKeys).forEach(([id, key]) => {
+      const el = document.getElementById(id);
+      if (el) el.querySelector('.label').textContent = t.statLabels[key] || key;
+    });
+
+    document.querySelectorAll('#rvContent .status-badge').forEach(el => {
+      const s = [...el.classList].find(c => t.statuses && t.statuses[c]);
+      if (s) el.textContent = t.statuses[s];
+    });
+    document.querySelectorAll('#rvContent .done-label[data-en]').forEach(el => {
+      el.textContent = el.dataset[lang] || el.dataset.en;
+    });
+    document.querySelectorAll('#rvContent .total-word').forEach(el => {
+      el.textContent = t.total || 'Total';
+    });
+
     document.querySelectorAll('#rvStats .label').forEach(el => {
       if (el.closest('[id^="wstat-all"]')) el.textContent = t.statLabels.all||'All';
     });
@@ -674,15 +703,6 @@
     }
   }
 
-  // Preload name map synchronously before anything renders
-  let nameMap = {};
-  try {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', '/api/menu-names', false); // synchronous
-    xhr.send();
-    if (xhr.status === 200) nameMap = JSON.parse(xhr.responseText);
-  } catch(e) {}
-
   function getItemName(item) {
     if (currentLang === 'gr' && nameMap[item.id]) return nameMap[item.id].gr;
     if (nameMap[item.id]) return nameMap[item.id].en;
@@ -711,7 +731,7 @@
         <div class="card-id">${o.short_id}</div>
         ${items}
         <div class="card-footer">
-          <div class="card-total">${t.total}: €${o.total.toFixed(2)}</div>
+          <div class="card-total"><span class="total-word">${t.total||'Total'}</span>: €${o.total.toFixed(2)}</div>
           <div class="card-pay">${payText}</div>
         </div>
         ${actions ? `<div class="card-actions">${actions}</div>` : ''}
