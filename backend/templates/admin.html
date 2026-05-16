@@ -305,11 +305,43 @@
   let currentFilter = sessionStorage.getItem('adminFilter') || 'all';
 
   // ── Soft refresh — no page reload, no blink ──
+  let _prevOrderIds = null;
+
+  function playNewOrderSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // Two-tone ping
+      [440, 660].forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.15 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.4);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 0.4);
+      });
+    } catch(e) {}
+  }
+
   async function softRefresh() {
     try {
       const res  = await fetch('/api/admin-orders');
       const data = await res.json();
-      renderBoard(data.orders || []);
+      const orders = data.orders || [];
+
+      // Detect new pending orders
+      const pendingIds = orders.filter(o => o.status === 'pending').map(o => o.id);
+      if (_prevOrderIds !== null) {
+        const newOnes = pendingIds.filter(id => !_prevOrderIds.includes(id));
+        if (newOnes.length > 0) playNewOrderSound();
+      }
+      _prevOrderIds = pendingIds;
+
+      renderBoard(orders);
     } catch (e) {}
   }
 
