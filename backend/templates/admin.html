@@ -370,7 +370,10 @@
     // Re-apply lang
     setLang(currentLang);
 
-    // Restore collapsed/expanded state
+    // Restore filter first (may auto-expand some cols)
+    if (currentFilter !== 'all') applyFilter(currentFilter);
+
+    // Restore collapsed/expanded state LAST — always wins
     const _openCols = JSON.parse(sessionStorage.getItem('adminOpenCols') || '[]');
     document.querySelectorAll('.col-header').forEach(header => {
       const table   = header.querySelector('.col-title').textContent.trim();
@@ -384,9 +387,6 @@
         if (chevron) chevron.style.transform = '';
       }
     });
-
-    // Restore filter without toggling (bypass toggle logic)
-    if (currentFilter !== 'all') applyFilter(currentFilter);
 
     // Restore active stat highlight
     document.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
@@ -432,7 +432,12 @@
     </div>`;
   }
   let nameMap = {};
-  fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/menu-names', false);
+    xhr.send();
+    if (xhr.status === 200) nameMap = JSON.parse(xhr.responseText);
+  } catch(e) {}
 
   // Local time
   document.querySelectorAll('.local-time').forEach(el => {

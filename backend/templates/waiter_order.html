@@ -547,7 +547,10 @@
                        d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
     });
 
-    // Restore collapsed state
+    // Restore filter first
+    if (currentWaiterFilter !== 'all') applyFilterW(currentWaiterFilter);
+
+    // Restore collapsed state LAST — always wins
     const _openCols = JSON.parse(sessionStorage.getItem('waiterOpenCols') || '[]');
     document.querySelectorAll('#rvContent .col-header').forEach(header => {
       const table   = header.querySelector('.col-title').textContent.trim();
@@ -561,9 +564,6 @@
         if (chevron) chevron.style.transform = '';
       }
     });
-
-    // Restore filter
-    if (currentWaiterFilter !== 'all') applyFilterW(currentWaiterFilter);
 
     // Restore active stat highlight
     document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
