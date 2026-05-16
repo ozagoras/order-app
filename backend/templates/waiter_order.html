@@ -171,6 +171,30 @@
     .empty-board .icon { font-size: 48px; margin-bottom: 12px; }
   
 
+    /* ── ORDERS VIEW — identical to admin ── */
+    .orders-header { padding: 20px 24px 12px; display: flex; align-items: center; justify-content: space-between; }
+    .orders-header h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--dark); }
+
+    #viewOrders .stats { display: flex; gap: 10px; padding: 0 24px 16px; flex-wrap: wrap; }
+
+    #viewOrders .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 0 24px 40px;
+    }
+    .table-col {
+      background: #E8EDEF;
+      border-radius: 16px;
+      overflow: hidden;
+      min-height: 80px;
+    }
+    .col-body  { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .col-count { background: var(--sun); color: var(--dark); font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
+    .col-empty { padding: 24px 16px; text-align: center; color: #aaa; font-size: 13px; }
+    .done-label { font-size: 10px; color: #bbb; text-align: center; padding: 6px 0; text-transform: uppercase; letter-spacing: 1px; }
+    .rv-empty  { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+
     /* ── Mobile responsive ── */
     @media (max-width: 600px) {
       .header { padding: 12px 16px 20px; }
@@ -554,9 +578,14 @@
     }
   }
 
-  // Fetch name map from API for translations
+  // Preload name map synchronously before anything renders
   let nameMap = {};
-  fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/menu-names', false); // synchronous
+    xhr.send();
+    if (xhr.status === 200) nameMap = JSON.parse(xhr.responseText);
+  } catch(e) {}
 
   function getItemName(item) {
     if (currentLang === 'gr' && nameMap[item.id]) return nameMap[item.id].gr;
