@@ -33,7 +33,7 @@
     .stats { display: flex; gap: 10px; padding: 0 24px 16px; flex-wrap: wrap; }
     .stat { background: #fff; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); min-width: 90px; transition: all 0.2s; }
     .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .stat.active { outline: 2px solid var(--ocean); }
+    .stat.active { outline: 3px solid var(--ocean); background: #EBF5F7; transform: translateY(-2px); }
     .stat .label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .stat .value { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; }
 
@@ -203,11 +203,7 @@
   </div>
 </div>
 
-<!-- Filter bar (hidden by default) -->
-<div id="filterBar" style="display:none; padding: 0 24px 12px; align-items:center; gap:12px;">
-  <span id="filterLabel" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--dark);"></span>
-  <button id="backBtn" onclick="filterStatus('all')" style="font-size:12px;padding:5px 14px;background:var(--dark);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;">← Back</button>
-</div>
+
 
 <!-- Kanban Board -->
 {% if not orders %}
@@ -453,8 +449,6 @@
     document.getElementById('btnGr').classList.toggle('active', lang === 'gr');
     document.getElementById('pageTitle').textContent   = t.pageTitle;
     document.getElementById('signOutLink').textContent = t.signOut;
-    const backBtn = document.getElementById('backBtn');
-    if (backBtn) backBtn.textContent = t.back;
 
     const emptyMsg = document.getElementById('emptyMsg');
     if (emptyMsg) emptyMsg.textContent = t.noOrders;
@@ -498,7 +492,6 @@
     const board     = document.getElementById('board');
     const emptyBoard = document.querySelector('.empty-board');
     const filterBar = document.getElementById('filterBar');
-    const filterLabel = document.getElementById('filterLabel');
 
     // Update active stat
     document.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
@@ -506,7 +499,6 @@
     if (activeStat && status !== 'all') activeStat.classList.add('active');
 
     if (status === 'all') {
-      filterBar.style.display = 'none';
       // Restore all cards
       document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
       document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
@@ -516,8 +508,6 @@
 
     const t = i18n[currentLang];
     const labels = { pending: t.statuses?.pending || 'pending', preparing: t.statuses?.preparing || 'preparing', ready: t.statuses?.ready || 'ready', delivered: t.statuses?.delivered || 'delivered', cancelled: t.statuses?.cancelled || 'cancelled' };
-    filterLabel.textContent = labels[status] || status;
-    filterBar.style.display = 'flex';
 
     // Show/hide cards by status
     document.querySelectorAll('.table-col').forEach(col => {

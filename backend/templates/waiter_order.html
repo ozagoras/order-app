@@ -345,10 +345,7 @@
     <h2>Orders</h2>
   </div>
   <div class="stats" id="rvStats"></div>
-  <div id="rvFilterBar" style="display:none;padding:0 16px 12px;align-items:center;gap:12px;">
-    <span id="rvFilterLabel" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--dark);"></span>
-    <button id="rvBackBtn" onclick="filterOrders('all')" style="font-size:12px;padding:5px 14px;background:var(--dark);color:#fff;border:none;border-radius:20px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;">← Back</button>
-  </div>
+
   <div id="rvContent"><div class="rv-empty">Loading...</div></div>
 </div>
 
@@ -406,8 +403,6 @@
     if (count > 0) document.getElementById('cartCount').textContent = count + ' ' + (count !== 1 ? t.items : t.item);
     // Tab labels
     document.getElementById('navOrder').textContent  = t.newOrder;
-    const rvBackBtn = document.getElementById('rvBackBtn');
-    if (rvBackBtn) rvBackBtn.textContent = t.back;
     document.getElementById('navOrders').textContent = t.orders;
     // Reload orders view in new language if active
     if (currentView === 'orders') loadOrders();
@@ -446,13 +441,12 @@
     document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
     const activeStat = document.getElementById('wstat-' + status);
     if (activeStat && status !== 'all') activeStat.classList.add('active');
-    const filterBar   = document.getElementById('rvFilterBar');
-    const filterLabel = document.getElementById('rvFilterLabel');
     const t = i18n[currentLang];
 
-    if (status === 'all') {
+    if (status === 'all' || status === currentWaiterFilter) {
+      currentWaiterFilter = 'all';
+      sessionStorage.setItem('waiterFilter', 'all');
       document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
-      filterBar.style.display = 'none';
       document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
       document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
       document.querySelectorAll('.done-label').forEach(l => l.style.display = '');
@@ -461,8 +455,6 @@
 
     const wstat = document.getElementById('wstat-' + status);
     if (wstat) wstat.classList.add('active');
-    filterLabel.textContent = t.statuses[status] || status;
-    filterBar.style.display = 'flex';
 
     document.querySelectorAll('.table-col').forEach(col => {
       const cards = col.querySelectorAll('.order-card');
@@ -534,7 +526,7 @@
       <div class="stat" onclick="filterOrders('cancelled')" id="wstat-cancelled" style="cursor:pointer;"><div class="label">${t.statLabels.cancelled}</div><div class="value" style="color:#ef4444">${cancelled.length}</div></div>
     `;
     // Render filter bar
-    document.getElementById('rvFilterBar').style.display = 'none';
+
 
     if (!orders.length) {
       document.getElementById('rvContent').innerHTML = `<div class="rv-empty">🏖️ ${t.noOrders}</div>`;
