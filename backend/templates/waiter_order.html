@@ -358,6 +358,7 @@
   const cart = {};
   let paymentMethod    = null;
   let currentLang      = localStorage.getItem('lang') || 'en';
+  const savedView      = sessionStorage.getItem('waiterView') || 'order';
   let ordersTimer         = null;
   let currentWaiterFilter = sessionStorage.getItem('waiterFilter') || 'all';
   let currentView      = 'order';
@@ -413,10 +414,13 @@
   }
 
   if (currentLang === 'gr') setLang('gr');
+  // Restore tab and load orders if needed
+  if (savedView === 'orders') switchView('orders');
 
   // ── View switching ──
   function switchView(view) {
     currentView = view;
+    sessionStorage.setItem('waiterView', view);
     const isOrder = view === 'order';
     document.getElementById('viewOrder').style.display  = isOrder ? 'block' : 'none';
     document.getElementById('viewOrders').style.display = isOrder ? 'none'  : 'block';
@@ -440,11 +444,14 @@
     currentWaiterFilter = status;
     sessionStorage.setItem('waiterFilter', status);
     document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
+    const activeStat = document.getElementById('wstat-' + status);
+    if (activeStat && status !== 'all') activeStat.classList.add('active');
     const filterBar   = document.getElementById('rvFilterBar');
     const filterLabel = document.getElementById('rvFilterLabel');
     const t = i18n[currentLang];
 
     if (status === 'all') {
+      document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
       filterBar.style.display = 'none';
       document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
       document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
