@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin — Beach Bar</title>
   <script>
+    // softRefresh every 10s — keeps display current
+    // ping runs inside softRefresh to detect new orders for sound
     setInterval(() => { if (!document.hidden) softRefresh(); }, 10000);
   </script>
   <style>
@@ -365,16 +367,15 @@
 
     // Update each existing column's cards
     document.querySelectorAll('.table-col').forEach(col => {
-      const table  = col.querySelector('.col-title').textContent.trim();
-      const body   = col.querySelector('.col-body');
-      const count  = col.querySelector('.col-count');
+      const table   = col.querySelector('.col-title').textContent.trim();
+      const body    = col.querySelector('.col-body');
+      const count   = col.querySelector('.col-count');
       const tOrders = tableMap[table] || [];
-      const active = tOrders.filter(o => ['pending','preparing','ready'].includes(o.status));
-      const done   = tOrders.filter(o => ['delivered','cancelled'].includes(o.status));
+      const active  = tOrders.filter(o => ['pending','preparing','ready'].includes(o.status));
+      const done    = tOrders.filter(o => ['delivered','cancelled'].includes(o.status));
 
       if (count) count.textContent = active.length;
 
-      // Rebuild body content
       let html = '';
       if (!tOrders.length) html = `<div class="col-empty">No orders</div>`;
       active.forEach(o => { html += buildCard(o); });
