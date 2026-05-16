@@ -593,6 +593,16 @@
     }
   }
 
+  // Fetch name map from API for translations
+  let nameMap = {};
+  fetch('/api/menu-names').then(r => r.json()).then(d => { nameMap = d; }).catch(() => {});
+
+  function getItemName(item) {
+    if (currentLang === 'gr' && nameMap[item.id]) return nameMap[item.id].gr;
+    if (nameMap[item.id]) return nameMap[item.id].en;
+    return item.name;
+  }
+
   function buildWaiterCard(o, t) {
     const payText     = o.payment === 'cash' ? t.cash : t.card;
     const waiterBadge = o.source === 'waiter' && o.waiter_name
