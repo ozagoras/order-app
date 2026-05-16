@@ -489,14 +489,19 @@
   async function loadOrders() {
     try {
       const res  = await fetch('/waiter/orders');
+      if (res.redirected || res.status === 401 || res.status === 302) {
+        document.getElementById('rvContent').innerHTML = '<div class="rv-empty">Session expired. Please <a href="/waiter/login">log in again</a>.</div>';
+        return;
+      }
       const data = await res.json();
       renderOrders(data.orders || []);
     } catch (e) {
-      document.getElementById('rvContent').innerHTML = '<div class="rv-empty">Could not load orders.</div>';
+      document.getElementById('rvContent').innerHTML = `<div class="rv-empty">Could not load orders: ${e.message}</div>`;
     }
   }
 
   function renderOrders(orders) {
+    try {
     const t = i18n[currentLang];
     const counts = { pending:0, preparing:0, ready:0, delivered:0, cancelled:0 };
     orders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
@@ -582,6 +587,10 @@
       if (el) el.classList.add('active');
     }
 
+    } catch(e) {
+      document.getElementById('rvContent').innerHTML = `<div class="rv-empty">Render error: ${e.message}</div>`;
+      console.error('renderOrders error:', e);
+    }
   }
 
   function buildWaiterCard(o, t) {
