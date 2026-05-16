@@ -257,21 +257,13 @@
         </div>
         <div class="card-actions">
           {% if order.status == 'pending' %}
-          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
-            <button type="submit" name="status" value="preparing" class="act-btn btn-preparing">▶ Preparing</button>
-          </form>
+          <button onclick="updateStatus('{{ order.id }}','preparing',this)" class="act-btn btn-preparing">▶ Preparing</button>
           {% endif %}
           {% if order.status in ['pending','preparing'] %}
-          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
-            <button type="submit" name="status" value="ready" class="act-btn btn-ready">✓ Ready</button>
-          </form>
+          <button onclick="updateStatus('{{ order.id }}','ready',this)" class="act-btn btn-ready">✓ Ready</button>
           {% endif %}
-          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
-            <button type="submit" name="status" value="delivered" class="act-btn btn-delivered">✓ Done</button>
-          </form>
-          <form method="POST" action="/admin/order/{{ order.id }}/status" style="flex:1">
-            <button type="submit" name="status" value="cancelled" class="act-btn btn-cancelled">✕</button>
-          </form>
+          <button onclick="updateStatus('{{ order.id }}','delivered',this)" class="act-btn btn-delivered">✓ Done</button>
+          <button onclick="updateStatus('{{ order.id }}','cancelled',this)" class="act-btn btn-cancelled">✕</button>
         </div>
       </div>
       {% endfor %}
@@ -408,11 +400,11 @@
     let actions = '';
     if (!['delivered','cancelled'].includes(o.status)) {
       if (o.status === 'pending')
-        actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="preparing" class="act-btn btn-preparing">▶ Preparing</button></form>`;
+        actions += `<button onclick="updateStatus('${o.id}','preparing',this)" style="flex:1" class="act-btn btn-preparing">▶ Preparing</button>`;
       if (['pending','preparing'].includes(o.status))
-        actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="ready" class="act-btn btn-ready">✓ Ready</button></form>`;
-      actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="delivered" class="act-btn btn-delivered">✓ Done</button></form>`;
-      actions += `<form method="POST" action="/admin/order/${o.id}/status" style="flex:1"><button type="submit" name="status" value="cancelled" class="act-btn btn-cancelled">✕</button></form>`;
+        actions += `<button onclick="updateStatus('${o.id}','ready',this)" style="flex:1" class="act-btn btn-ready">✓ Ready</button>`;
+      actions += `<button onclick="updateStatus('${o.id}','delivered',this)" style="flex:1" class="act-btn btn-delivered">✓ Done</button>`;
+      actions += `<button onclick="updateStatus('${o.id}','cancelled',this)" style="flex:1" class="act-btn btn-cancelled">✕</button>`;
     }
 
     return `<div class="order-card ${o.status}">
@@ -518,6 +510,28 @@
   if (currentFilter !== 'all') filterStatus(currentFilter);
 
   // applyFilter — pure filter, no toggle (used by renderBoard)
+  async function updateStatus(orderId, status, btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    try {
+      const res = await fetch(`/admin/order/${orderId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        // Instant soft refresh without waiting for interval
+        softRefresh();
+      } else {
+        btn.disabled = false;
+        btn.style.opacity = '';
+      }
+    } catch(e) {
+      btn.disabled = false;
+      btn.style.opacity = '';
+    }
+  }
+
   function applyFilter(status) {
     if (status === 'all') {
       document.querySelectorAll('.order-card').forEach(c => c.style.display = '');

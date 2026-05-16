@@ -80,6 +80,21 @@ limiter = Limiter(
 
 SESSION_COOKIE = "nfc_session"
 
+# Cache name_map in memory — rebuilt every 10 minutes max
+_name_map_cache = {"data": {}, "at": 0}
+
+def get_name_map():
+    import time
+    if time.time() - _name_map_cache["at"] > 600:  # 10 min cache
+        menu = fetch_menu()
+        nm   = {}
+        for cat in menu:
+            for item in cat.get("products", []):
+                nm[item["id"]] = {"en": item["name_en"], "gr": item["name_gr"]}
+        _name_map_cache["data"] = nm
+        _name_map_cache["at"]   = time.time()
+    return _name_map_cache["data"]
+
 
 def generate_token(uid: str, ctr: str, session_id: str) -> str:
     secret  = os.environ.get("SECRET_KEY", "changeme")
@@ -392,11 +407,20 @@ def admin_dashboard():
 @app.route("/admin/order/<order_id>/status", methods=["POST"])
 @admin_required
 def update_status(order_id):
-    status = request.form.get("status", "").strip()
+    # Accept both form and JSON
+    if request.is_json:
+        status = (request.get_json() or {}).get("status", "").strip()
+    else:
+        status = request.form.get("status", "").strip()
+
     if status not in ("pending", "preparing", "ready", "delivered", "cancelled"):
         return jsonify({"error": "Invalid status"}), 400
 
     update_order_status(order_id, status)
+
+    # Return JSON for fetch calls, redirect for form POST fallback
+    if request.is_json or request.headers.get("X-Requested-With") == "fetch":
+        return jsonify({"success": True, "status": status}), 200
     return redirect(url_for("admin_dashboard"))
 
 
@@ -550,13 +574,7 @@ def api_admin_orders():
 
 @app.route("/api/menu-names")
 def api_menu_names():
-    """Returns a flat name map {id: {en, gr}} for client-side translation."""
-    menu = fetch_menu()
-    name_map = {}
-    for cat in menu:
-        for item in cat.get("products", []):
-            name_map[item["id"]] = {"en": item["name_en"], "gr": item["name_gr"]}
-    return jsonify(name_map)
+    return jsonify(get_name_map())
 
 
 @app.route("/api/register-tag", methods=["POST"])
