@@ -367,9 +367,33 @@
                        d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
     });
 
-    // Re-apply lang and filter
+    // Re-apply lang
     setLang(currentLang);
-    if (currentFilter !== 'all') filterStatus(currentFilter);
+
+    // Restore collapsed/expanded state
+    const _openCols = JSON.parse(sessionStorage.getItem('adminOpenCols') || '[]');
+    document.querySelectorAll('.col-header').forEach(header => {
+      const table   = header.querySelector('.col-title').textContent.trim();
+      const body    = header.nextElementSibling;
+      const chevron = header.querySelector('.col-chevron');
+      if (_openCols.includes(table)) {
+        body.style.display      = 'flex';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+      } else {
+        body.style.display      = 'none';
+        if (chevron) chevron.style.transform = '';
+      }
+    });
+
+    // Restore filter without toggling (bypass toggle logic)
+    if (currentFilter !== 'all') applyFilter(currentFilter);
+
+    // Restore active stat highlight
+    document.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
+    if (currentFilter !== 'all') {
+      const el = document.getElementById('stat-' + currentFilter);
+      if (el) el.classList.add('active');
+    }
   }
 
   function buildCard(o) {
@@ -486,6 +510,30 @@
   // Restore filter after auto-refresh
   if (currentFilter !== 'all') filterStatus(currentFilter);
 
+  // applyFilter — pure filter, no toggle (used by renderBoard)
+  function applyFilter(status) {
+    if (status === 'all') {
+      document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
+      document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
+      document.querySelectorAll('.done-label').forEach(l => l.style.display = '');
+      return;
+    }
+    document.querySelectorAll('.table-col').forEach(col => {
+      const cards = col.querySelectorAll('.order-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const show = card.classList.contains(status);
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      col.style.display = visible > 0 ? '' : 'none';
+      col.querySelectorAll('.done-label').forEach(l => {
+        l.style.display = ['delivered','cancelled'].includes(status) ? '' : 'none';
+      });
+    });
+  }
+
+  // filterStatus — user click with toggle behaviour
   function filterStatus(status) {
     // Toggle — clicking same filter again resets to all
     const newStatus = (status !== 'all' && status === currentFilter) ? 'all' : status;

@@ -411,8 +411,15 @@
     // Tab labels
     document.getElementById('navOrder').textContent  = t.newOrder;
     document.getElementById('navOrders').textContent = t.orders;
-    // Reload orders view in new language if active
-    if (currentView === 'orders') loadOrders();
+    // Retranslate rendered cards without reloading
+    document.querySelectorAll('#rvContent .status-badge').forEach(el => {
+      const s = [...el.classList].find(c => t.statuses && t.statuses[c]);
+      if (s) el.textContent = t.statuses[s];
+    });
+    document.querySelectorAll('#rvContent .done-label[data-en]').forEach(el => { el.textContent = el.dataset[lang]; });
+    document.querySelectorAll('#rvStats .label').forEach(el => {
+      if (el.closest('[id^="wstat-all"]')) el.textContent = t.statLabels.all||'All';
+    });
   }
 
   if (currentLang === 'gr') setLang('gr');
@@ -575,8 +582,6 @@
       if (el) el.classList.add('active');
     }
 
-    // Translate
-    setLang(currentLang);
   }
 
   function buildWaiterCard(o, t) {
