@@ -527,6 +527,14 @@
       el.textContent = t.total || 'Total';
     });
 
+    // Translate item names
+    document.querySelectorAll('#rvContent .iname[data-id]').forEach(el => {
+      const id   = el.dataset.id;
+      const qty  = el.dataset.qty;
+      const name = (lang === 'gr' && nameMap[id]) ? nameMap[id].gr : (nameMap[id] ? nameMap[id].en : el.dataset.nameEn);
+      el.textContent = qty + 'x ' + name;
+    });
+
     document.querySelectorAll('#rvStats .label').forEach(el => {
       if (el.closest('[id^="wstat-all"]')) el.textContent = t.statLabels.all||'All';
     });
@@ -715,7 +723,7 @@
       ? `<span class="waiter-tag">👨‍🍳 ${o.waiter_name}</span>` : '';
     const statusLabel = t.statuses[o.status] || o.status;
     const items = (o.order_items||[]).map(i =>
-      `<div class="card-item"><span class="iname">${i.qty}x ${getItemName(i)}</span><span class="iprice">€${(i.price*i.qty).toFixed(2)}</span></div>`
+      `<div class="card-item"><span class="iname" data-id="${i.id}" data-qty="${i.qty}" data-name-en="${i.name}">${i.qty}x ${getItemName(i)}</span><span class="iprice">€${(i.price*i.qty).toFixed(2)}</span></div>`
     ).join('');
 
     // Waiter — read only, no action buttons
