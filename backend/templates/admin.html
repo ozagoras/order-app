@@ -487,50 +487,42 @@
   if (currentFilter !== 'all') filterStatus(currentFilter);
 
   function filterStatus(status) {
-    currentFilter = status;
-    sessionStorage.setItem('adminFilter', status);
-    const board     = document.getElementById('board');
-    const emptyBoard = document.querySelector('.empty-board');
-    const filterBar = document.getElementById('filterBar');
+    // Toggle — clicking same filter again resets to all
+    const newStatus = (status !== 'all' && status === currentFilter) ? 'all' : status;
+    currentFilter = newStatus;
+    sessionStorage.setItem('adminFilter', newStatus);
 
-    // Update active stat
+    // Update highlight
     document.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
-    const activeStat = document.getElementById('stat-' + status);
-    if (activeStat && status !== 'all') activeStat.classList.add('active');
+    if (newStatus !== 'all') {
+      const el = document.getElementById('stat-' + newStatus);
+      if (el) el.classList.add('active');
+    }
 
-    if (status === 'all') {
-      // Restore all cards
+    if (newStatus === 'all') {
       document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
       document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
       document.querySelectorAll('.done-label').forEach(l => l.style.display = '');
       return;
     }
 
-    const t = i18n[currentLang];
-    const labels = { pending: t.statuses?.pending || 'pending', preparing: t.statuses?.preparing || 'preparing', ready: t.statuses?.ready || 'ready', delivered: t.statuses?.delivered || 'delivered', cancelled: t.statuses?.cancelled || 'cancelled' };
-
-    // Show/hide cards by status
     document.querySelectorAll('.table-col').forEach(col => {
       const cards = col.querySelectorAll('.order-card');
       let visible = 0;
       cards.forEach(card => {
-        const show = card.classList.contains(status);
+        const show = card.classList.contains(newStatus);
         card.style.display = show ? '' : 'none';
         if (show) visible++;
       });
       col.style.display = visible > 0 ? '' : 'none';
-
-      // Auto-expand column if it has matching cards
       if (visible > 0) {
         const body    = col.querySelector('.col-body');
         const chevron = col.querySelector('.col-chevron');
         if (body) body.style.display = 'flex';
         if (chevron) chevron.style.transform = 'rotate(180deg)';
       }
-
-      // Hide done-label if filtering active statuses
       col.querySelectorAll('.done-label').forEach(l => {
-        l.style.display = ['delivered','cancelled'].includes(status) ? '' : 'none';
+        l.style.display = ['delivered','cancelled'].includes(newStatus) ? '' : 'none';
       });
     });
   }

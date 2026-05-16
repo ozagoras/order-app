@@ -436,31 +436,31 @@
 
   // ── Orders loading ──
   function filterOrders(status) {
-    currentWaiterFilter = status;
-    sessionStorage.setItem('waiterFilter', status);
-    document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
-    const activeStat = document.getElementById('wstat-' + status);
-    if (activeStat && status !== 'all') activeStat.classList.add('active');
-    const t = i18n[currentLang];
+    // Toggle — clicking same filter again resets to all
+    const newStatus = (status !== 'all' && status === currentWaiterFilter) ? 'all' : status;
+    currentWaiterFilter = newStatus;
+    sessionStorage.setItem('waiterFilter', newStatus);
 
-    if (status === 'all' || status === currentWaiterFilter) {
-      currentWaiterFilter = 'all';
-      sessionStorage.setItem('waiterFilter', 'all');
-      document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
+    // Update highlight
+    document.querySelectorAll('[id^="wstat-"]').forEach(s => s.classList.remove('active'));
+    if (newStatus !== 'all') {
+      const el = document.getElementById('wstat-' + newStatus);
+      if (el) el.classList.add('active');
+    }
+
+    // Show/hide cards
+    if (newStatus === 'all') {
       document.querySelectorAll('.order-card').forEach(c => c.style.display = '');
       document.querySelectorAll('.table-col').forEach(col => col.style.display = '');
       document.querySelectorAll('.done-label').forEach(l => l.style.display = '');
       return;
     }
 
-    const wstat = document.getElementById('wstat-' + status);
-    if (wstat) wstat.classList.add('active');
-
     document.querySelectorAll('.table-col').forEach(col => {
       const cards = col.querySelectorAll('.order-card');
       let visible = 0;
       cards.forEach(card => {
-        const show = card.classList.contains(status);
+        const show = card.classList.contains(newStatus);
         card.style.display = show ? '' : 'none';
         if (show) visible++;
       });
@@ -472,7 +472,7 @@
         if (chevron) chevron.style.transform = 'rotate(180deg)';
       }
       col.querySelectorAll('.done-label').forEach(l => {
-        l.style.display = ['delivered','cancelled'].includes(status) ? '' : 'none';
+        l.style.display = ['delivered','cancelled'].includes(newStatus) ? '' : 'none';
       });
     });
   }
