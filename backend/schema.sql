@@ -9,19 +9,28 @@ CREATE TABLE IF NOT EXISTS nfc_tags (
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    uid         TEXT        NOT NULL,
-    table_id    TEXT        NOT NULL,
-    counter     INTEGER     NOT NULL,
-    token       TEXT        NOT NULL DEFAULT '',
-    used        BOOLEAN     NOT NULL DEFAULT FALSE,
-    expires_at  TIMESTAMPTZ NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    uid           TEXT        NOT NULL,
+    table_id      TEXT        NOT NULL,
+    counter       INTEGER     NOT NULL,
+    token         TEXT        NOT NULL DEFAULT '',
+    refresh_token TEXT        DEFAULT '',
+    used          BOOLEAN     NOT NULL DEFAULT FALSE,
+    expires_at    TIMESTAMPTZ NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS sessions_id_idx    ON sessions (id);
-CREATE INDEX IF NOT EXISTS sessions_uid_idx   ON sessions (uid);
-CREATE INDEX IF NOT EXISTS sessions_token_idx ON sessions (token);
+-- For existing databases that predate the refresh_token column:
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS refresh_token TEXT DEFAULT '';
+
+-- Note: `id` is already the PRIMARY KEY, so it is indexed automatically — a
+-- separate sessions_id_idx would be redundant and is intentionally omitted.
+CREATE INDEX IF NOT EXISTS sessions_uid_idx           ON sessions (uid);
+CREATE INDEX IF NOT EXISTS sessions_token_idx         ON sessions (token);
+-- Hit on every order submission and every page refresh:
+CREATE INDEX IF NOT EXISTS sessions_refresh_token_idx ON sessions (refresh_token);
+-- Filters every session-validity check and the cleanup query:
+CREATE INDEX IF NOT EXISTS sessions_expires_idx       ON sessions (expires_at);
 
 -- Orders table
 CREATE TABLE IF NOT EXISTS orders (

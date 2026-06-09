@@ -182,10 +182,15 @@
     <div class="url-box" id="sdmUrl"></div>
     <ol start="4">
       <li>Enable <strong>SDM</strong></li>
-      <li>Enable UID mirror, Counter mirror, CMAC mirror</li>
-      <li>Set <strong>FileReadKey</strong> to your SDM_AES_KEY from .env</li>
+      <li>Enable <strong>UID mirror</strong> and <strong>Counter mirror</strong></li>
       <li>Tap tag to write</li>
     </ol>
+    <p style="font-size: 13px; color: #666; margin-top: 8px;">
+      Tap validation relies on the tag's UID and its tamper-proof read counter
+      (each tap increments it on-chip; the server rejects any counter it has
+      already seen). CMAC/FileReadKey is not configured — see the project notes
+      if you later add a hardware reader for cryptographic tap verification.
+    </p>
   </div>
 </div>
 
