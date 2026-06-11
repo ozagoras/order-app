@@ -118,3 +118,24 @@ def fetch_menu() -> list[dict]:
     except Exception as e:
         logger.error("Failed to fetch menu: %s", str(e), exc_info=True)
         return []
+
+# ---------------------------------------------------------------------------
+# Name map (moved here from app.py) — {id: {en, gr}} for the language toggle.
+# Cached in memory, rebuilt at most every 10 minutes. Same behaviour as before.
+# ---------------------------------------------------------------------------
+
+import time as _time
+
+_name_map_cache = {"data": {}, "at": 0}
+
+
+def get_name_map() -> dict:
+    if _time.time() - _name_map_cache["at"] > 600:  # 10 min cache
+        menu = fetch_menu()
+        nm = {}
+        for cat in menu:
+            for item in cat.get("products", []):
+                nm[item["id"]] = {"en": item["name_en"], "gr": item["name_gr"]}
+        _name_map_cache["data"] = nm
+        _name_map_cache["at"] = _time.time()
+    return _name_map_cache["data"]
